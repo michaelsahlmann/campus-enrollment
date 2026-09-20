@@ -8,18 +8,15 @@ CREATE TABLE IF NOT EXISTS public.settings (
 -- RLS (Row Level Security) per Supabase Best Practices
 ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow public read of settings"
-    ON public.settings
-    FOR SELECT
-    TO anon, authenticated
-    USING (true);
-
-CREATE POLICY "Allow service_role full access to settings"
-    ON public.settings
-    FOR ALL
-    TO service_role
-    USING (true)
-    WITH CHECK (true);
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'settings' AND policyname = 'Allow public read of settings') THEN
+    CREATE POLICY "Allow public read of settings" ON public.settings FOR SELECT TO anon, authenticated USING (true);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname = 'public' AND tablename = 'settings' AND policyname = 'Allow service_role full access to settings') THEN
+    CREATE POLICY "Allow service_role full access to settings" ON public.settings FOR ALL TO service_role USING (true) WITH CHECK (true);
+  END IF;
+END $$;
 
 -- Inserción inicial de datos bancarios para transferencias
 INSERT INTO public.settings (key, value)

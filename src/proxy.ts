@@ -1,31 +1,54 @@
 import { NextRequest, NextResponse } from "next/server";
+import { createServerClient } from "@supabase/ssr";
 
-const PUBLIC_PATHS = ["/login", "/checkout", "/api/checkout", "/api/auth/login", "/api/auth/logout"];
-
-export function proxy(req: NextRequest) {
-  const { pathname } = req.nextUrl;
-
-  if (PUBLIC_PATHS.some((path) => pathname.startsWith(path))) {
-    return NextResponse.next();
-  }
-
-  if (
+function isPublicPath(pathname: string) {
+  return (
+    pathname === "/login" ||
+    pathname === "/auth/callback" ||
+    pathname.startsWith("/checkout/") ||
+    pathname === "/api/checkout/orders" ||
+    pathname === "/api/checkout/coupons" ||
+    /^\/api\/checkout\/[^/]+$/.test(pathname) ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
     pathname.startsWith("/vercel.svg") ||
     pathname.startsWith("/next.svg")
-  ) {
+  );
+}
+
+export function proxy(req: NextRequest) {
+  const { pathname } = req.nextUrl;
+
+  if (isPublicPath(pathname)) {
     return NextResponse.next();
   }
 
-  const session = req.cookies.get("campus_session");
-  if (!session || session.value !== "authenticated") {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  if (!supabaseUrl || !supabaseAnonKey || !adminEmail) {
     const loginUrl = req.nextUrl.clone();
     loginUrl.pathname = "/login";
     return NextResponse.redirect(loginUrl);
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next({ request: req });
+  const supabase = createServerClient(supabaseUrl, supabaseAnonKey, {
+    cookies: {
+      getAll: () => req.cookies.getAll(),
+      setAll: (cookies) => {
+        cookies.forEach(({ name, value }) => req.cookies.set(name, value));
+        cookies.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+      },
+    },
+  });
+
+  return supabase.auth.getClaims().then(({ data }) => {
+    if (data?.claims?.email?.toLowerCase() === adminEmail) return response;
+    const loginUrl = req.nextUrl.clone();
+    loginUrl.pathname = "/login";
+    return NextResponse.redirect(loginUrl);
+  });
 }
 
 export const config = {

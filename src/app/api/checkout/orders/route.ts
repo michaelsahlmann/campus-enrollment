@@ -79,6 +79,14 @@ export async function POST(request: NextRequest) {
     }
 
     const discountAmount = coupon ? Math.min(originalAmount, coupon.discount_type === "percentage" ? (originalAmount * Number(coupon.discount_value)) / 100 : Number(coupon.discount_value)) : 0;
+    let proofPath: string | null = null;
+    if (proof instanceof File && proof.size > 0) {
+      const extension = proof.type === "application/pdf" ? "pdf" : proof.type === "image/png" ? "png" : "jpg";
+      proofPath = `pending/${crypto.randomUUID()}.${extension}`;
+      const { error: uploadError } = await supabase.storage.from("payment-proofs").upload(proofPath, proof, { contentType: proof.type });
+      if (uploadError) throw uploadError;
+    }
+
     const reference = `CE-${crypto.randomUUID().replaceAll("-", "").slice(0, 8).toUpperCase()}`;
     const { data: order, error: orderError } = await supabase.from("orders").insert({
       reference,
@@ -93,16 +101,11 @@ export async function POST(request: NextRequest) {
       amount_original: originalAmount,
       discount_amount: discountAmount,
       amount_due: originalAmount - discountAmount,
+      payment_proof_path: proofPath,
     }).select("id, reference").single();
-    if (orderError) throw orderError;
-
-    if (proof instanceof File && proof.size > 0) {
-      const extension = proof.type === "application/pdf" ? "pdf" : proof.type === "image/png" ? "png" : "jpg";
-      const path = `${order.id}/${crypto.randomUUID()}.${extension}`;
-      const { error: uploadError } = await supabase.storage.from("payment-proofs").upload(path, proof, { contentType: proof.type });
-      if (uploadError) throw uploadError;
-      const { error: updateError } = await supabase.from("orders").update({ payment_proof_path: path }).eq("id", order.id);
-      if (updateError) throw updateError;
+    if (orderError) {
+      if (proofPath) await supabase.storage.from("payment-proofs").remove([proofPath]);
+      throw orderError;
     }
 
     return NextResponse.json({ success: true, reference: order.reference });

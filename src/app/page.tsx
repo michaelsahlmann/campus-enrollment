@@ -8,7 +8,6 @@ import {
   BookOpen,
   Settings,
   CheckCircle2,
-  Check,
   Copy,
   ExternalLink,
   MessageSquare,
@@ -31,6 +30,7 @@ import {
 import BrandLogo from "@/components/brand-logo";
 import { DEFAULT_COURSES, CourseItem } from "@/lib/courses";
 import { BankSettings, DEFAULT_BANK_SETTINGS } from "@/lib/settings";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 function formatPygInput(val: string | number): string {
   if (val === "" || val === null || val === undefined) return "";
@@ -131,6 +131,13 @@ const TAB_REVERSE_MAP: Record<string, string> = {
 
 export default function CampusPortalPage() {
   const router = useRouter();
+
+  async function signOut() {
+    const supabase = createSupabaseBrowserClient();
+    await supabase?.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  }
   const [activeTab, setActiveTab] = useState<"form" | "students" | "courses" | "checkouts" | "orders" | "coupons" | "config">(() => {
     if (typeof window !== "undefined") {
       const tabParam = new URLSearchParams(window.location.search).get("tab");
@@ -778,10 +785,7 @@ ${confirmedOrderCredentials.magicLink}
             </a>
             <button
               type="button"
-              onClick={async () => {
-                await fetch("/api/auth/logout", { method: "POST" });
-                router.push("/login");
-              }}
+              onClick={signOut}
               className="flex items-center gap-1 text-zinc-400 hover:text-rose-400 transition cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" />
@@ -849,10 +853,7 @@ ${confirmedOrderCredentials.magicLink}
 
           <button
             type="button"
-            onClick={async () => {
-              await fetch("/api/auth/logout", { method: "POST" });
-              router.push("/login");
-            }}
+            onClick={signOut}
             className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-zinc-400 hover:text-rose-400 hover:bg-white/[0.04] transition cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
@@ -893,7 +894,7 @@ ${confirmedOrderCredentials.magicLink}
                 <form onSubmit={handleEnrollSubmit} className="space-y-5">
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                      <label htmlFor="enroll-name" className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
                         Nombre y Apellido del Alumno
                       </label>
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-sky-500/15 text-sky-400 border border-sky-500/25">
@@ -902,6 +903,8 @@ ${confirmedOrderCredentials.magicLink}
                     </div>
                     <input
                       type="text"
+                      id="enroll-name"
+                      autoComplete="name"
                       required
                       placeholder="Ej. Juan Pérez"
                       value={name}
@@ -912,7 +915,7 @@ ${confirmedOrderCredentials.magicLink}
 
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                      <label htmlFor="enroll-email" className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
                         Correo Electrónico (Login del Alumno)
                       </label>
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-sky-500/15 text-sky-400 border border-sky-500/25">
@@ -921,6 +924,8 @@ ${confirmedOrderCredentials.magicLink}
                     </div>
                     <input
                       type="email"
+                      id="enroll-email"
+                      autoComplete="email"
                       required
                       placeholder="alumno@gmail.com"
                       value={email}
@@ -931,7 +936,7 @@ ${confirmedOrderCredentials.magicLink}
 
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                      <label htmlFor="enroll-phone" className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
                         Teléfono o WhatsApp
                       </label>
                       <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
@@ -940,6 +945,8 @@ ${confirmedOrderCredentials.magicLink}
                     </div>
                     <input
                       type="text"
+                      id="enroll-phone"
+                      autoComplete="tel"
                       placeholder="+595 981 123456"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
@@ -949,7 +956,7 @@ ${confirmedOrderCredentials.magicLink}
 
                   <div>
                     <div className="flex items-center justify-between mb-2">
-                      <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                      <label htmlFor="enroll-course" className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
                         Curso a Habilitar
                       </label>
                       <div className="flex items-center gap-2">
@@ -969,6 +976,7 @@ ${confirmedOrderCredentials.magicLink}
                       </div>
                     </div>
                     <select
+                      id="enroll-course"
                       value={selectedCourseUuid}
                       onChange={(e) => {
                         setSelectedCourseUuid(e.target.value);
@@ -987,27 +995,28 @@ ${confirmedOrderCredentials.magicLink}
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[11px] font-semibold uppercase tracking-wider text-zinc-400 mb-2">
+                      <label htmlFor="enroll-payment-method" className="block text-[11px] font-semibold uppercase tracking-wider text-zinc-400 mb-2">
                         Método de Pago
                       </label>
                       <select
+                        id="enroll-payment-method"
                         value={paymentMethod}
                         onChange={(e) => setPaymentMethod(e.target.value)}
                         className="apple-input w-full px-4 py-2.5 rounded-xl text-white text-xs sm:text-sm cursor-pointer"
                       >
                         <option value="manual_transfer" className="bg-[#0D0E14] text-white">Transferencia bancaria</option>
                         <option value="cash_pos" className="bg-[#0D0E14] text-white">Efectivo / POS / Cobro directo</option>
-                        <option value="stripe" className="bg-[#0D0E14] text-white">Stripe</option>
                         <option value="mercadopago" className="bg-[#0D0E14] text-white">MercadoPago</option>
                         <option value="courtesy" className="bg-[#0D0E14] text-white">Cortesía / Beca 100%</option>
                       </select>
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-semibold uppercase tracking-wider text-zinc-400 mb-2">
+                      <label htmlFor="enroll-amount" className="block text-[11px] font-semibold uppercase tracking-wider text-zinc-400 mb-2">
                         Monto Pagado (PYG)
                       </label>
                       <input
+                        id="enroll-amount"
                         type="text"
                         inputMode="numeric"
                         value={formatPygInput(amountPaid)}
@@ -1019,7 +1028,7 @@ ${confirmedOrderCredentials.magicLink}
                   </div>
 
                   <div>
-                    <label className="block text-[11px] font-semibold uppercase tracking-wider text-zinc-400 mb-2">
+                      <label htmlFor="enroll-notes" className="block text-[11px] font-semibold uppercase tracking-wider text-zinc-400 mb-2">
                       Notas Internas (Opcional)
                     </label>
                     <input
@@ -1120,6 +1129,7 @@ ${confirmedOrderCredentials.magicLink}
                     </label>
                     <div className="flex gap-2">
                       <input
+                        id="enroll-notes"
                         type="text"
                         readOnly
                         value={successData.magicLink}
@@ -1523,7 +1533,7 @@ ${confirmedOrderCredentials.magicLink}
                 className="flex items-center gap-2 px-3.5 py-2 bg-white/[0.06] hover:bg-white/[0.1] disabled:opacity-50 text-white rounded-xl text-xs font-semibold transition cursor-pointer border border-white/[0.08]"
               >
                 <RefreshCw className={`w-3.5 h-3.5 ${isLoadingCheckouts ? "animate-spin" : ""}`} />
-                {isLoadingCheckouts ? "Cargando..." : "Actualizar"}
+                <span aria-live="polite">{isLoadingCheckouts ? "Cargando…" : "Actualizar"}</span>
               </button>
             </div>
 
@@ -1927,7 +1937,7 @@ ${confirmedOrderCredentials.magicLink}
                   className="flex items-center gap-1.5 px-3.5 py-2 bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] disabled:opacity-50 text-white rounded-xl text-xs font-semibold transition cursor-pointer"
                 >
                   <RefreshCw className={`w-3.5 h-3.5 ${isLoadingCoupons ? "animate-spin" : ""}`} />
-                  {isLoadingCoupons ? "Cargando..." : "Actualizar"}
+                  <span aria-live="polite">{isLoadingCoupons ? "Cargando…" : "Actualizar"}</span>
                 </button>
 
                 {coupons.length > 0 && (
@@ -2539,7 +2549,7 @@ ${confirmedOrderCredentials.magicLink}
                     disabled={isUpdatingCoupon}
                     className="px-5 py-2 bg-white text-black font-semibold hover:bg-zinc-200 disabled:opacity-50 rounded-xl text-xs transition shadow-[0_2px_12px_rgba(255,255,255,0.1)] cursor-pointer flex items-center gap-1.5"
                   >
-                    {isUpdatingCoupon ? "Guardando..." : "Guardar Cambios"}
+                    <span aria-live="polite">{isUpdatingCoupon ? "Guardando…" : "Guardar Cambios"}</span>
                   </button>
                 </div>
               </form>
