@@ -404,6 +404,8 @@ ${phone ? `Teléfono: ${phone}\n` : ""}${method === "transfer" ? (selectedFile &
                       <input
                         id="student-name-input"
                         type="text"
+                        name="name"
+                        autoComplete="name"
                         required
                         placeholder="Ej. Carlos Benítez"
                         value={name}
@@ -426,6 +428,8 @@ ${phone ? `Teléfono: ${phone}\n` : ""}${method === "transfer" ? (selectedFile &
                       <input
                         id="student-email-input"
                         type="email"
+                        name="email"
+                        autoComplete="email"
                         required
                         placeholder="tu-correo@ejemplo.com"
                         value={email}
@@ -451,6 +455,8 @@ ${phone ? `Teléfono: ${phone}\n` : ""}${method === "transfer" ? (selectedFile &
                       <input
                         id="student-confirm-email-input"
                         type="email"
+                        name="confirm-email"
+                        autoComplete="email"
                         required
                         placeholder="Repite tu correo para verificar"
                         value={confirmEmail}
@@ -483,6 +489,8 @@ ${phone ? `Teléfono: ${phone}\n` : ""}${method === "transfer" ? (selectedFile &
                       <input
                         id="student-phone-input"
                         type="tel"
+                        name="tel"
+                        autoComplete="tel"
                         placeholder="981 123 456"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
@@ -836,7 +844,7 @@ ${phone ? `Teléfono: ${phone}\n` : ""}${method === "transfer" ? (selectedFile &
                     disabled={couponLoading || !couponCode.trim()}
                     className="px-4 py-2.5 bg-white/[0.08] hover:bg-white/[0.14] active:scale-95 disabled:opacity-40 text-white font-semibold rounded-xl text-xs transition cursor-pointer border border-white/[0.08]"
                   >
-                    {couponLoading ? "..." : "Aplicar"}
+                    {couponLoading ? "Aplicando…" : "Aplicar"}
                   </button>
                 </div>
 

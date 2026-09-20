@@ -54,7 +54,7 @@ body {
 .apple-input {
   background: rgba(8, 9, 14, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.09);
-  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .apple-input:hover {
@@ -66,4 +66,3 @@ body {
   box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
   outline: none;
 }
-
