@@ -1,11 +1,13 @@
 import { notFound } from "next/navigation";
 import { getAdminSupabase } from "@/lib/supabase";
 import { DEFAULT_COURSES } from "@/lib/courses";
+import { getBankSettings } from "@/lib/settings";
 import CheckoutForm from "./checkout-form";
 
 export default async function CheckoutPage(props: { params: Promise<{ courseUuid: string }> }) {
   const { courseUuid: checkoutSlug } = await props.params;
   const supabase = getAdminSupabase();
+  const bankSettings = await getBankSettings();
 
   let resolvedTitle = "";
   let resolvedPrice = 0;
@@ -87,6 +89,7 @@ export default async function CheckoutPage(props: { params: Promise<{ courseUuid
         price_pyg: resolvedPrice,
       }}
       checkoutSlug={resolvedSlug}
+      bankSettings={bankSettings}
     />
   );
 }

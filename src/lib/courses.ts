@@ -18,13 +18,4 @@ export const DEFAULT_COURSES: CourseItem[] = [
     price_usd: 200,
     badge: "Principal",
   },
-  {
-    id: "course_6ec57be0-3fbf-459c-b735-af6f672ac0cd",
-    name: "Prueba de Video",
-    course_uuid: "course_6ec57be0-3fbf-459c-b735-af6f672ac0cd",
-    description: "Entorno de pruebas y streaming privado con Nginx Video Vault.",
-    price_pyg: 0,
-    price_usd: 0,
-    badge: "Test",
-  },
 ];

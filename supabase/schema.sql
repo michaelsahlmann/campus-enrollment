@@ -41,6 +41,13 @@ CREATE TABLE IF NOT EXISTS public.enrollments (
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- 4. Tabla de Configuraciones Generales (JSONB)
+CREATE TABLE IF NOT EXISTS public.settings (
+    key TEXT PRIMARY KEY,
+    value JSONB NOT NULL DEFAULT '{}'::jsonb,
+    updated_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- Índices para búsqueda rápida
 CREATE INDEX IF NOT EXISTS idx_students_email ON public.students(email);
 CREATE INDEX IF NOT EXISTS idx_courses_uuid ON public.courses(course_uuid);
@@ -56,14 +63,6 @@ VALUES
     'Guía práctica y completa para invertir en la Bolsa de Valores de Asunción (BVA).',
     1500000,
     200,
-    true
-),
-(
-    'Prueba de Video',
-    'course_6ec57be0-3fbf-459c-b735-af6f672ac0cd',
-    'Curso de pruebas técnicas y streaming con Nginx Video Vault.',
-    0,
-    0,
     true
 )
 ON CONFLICT (course_uuid) DO NOTHING;

@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   UserPlus,
@@ -24,8 +24,24 @@ import {
   Pencil,
   AlertTriangle,
   Tag,
+  Menu,
+  LogOut,
+  Building2,
 } from "lucide-react";
 import { DEFAULT_COURSES, CourseItem } from "@/lib/courses";
+import { BankSettings, DEFAULT_BANK_SETTINGS } from "@/lib/settings";
+
+function formatPygInput(val: string | number): string {
+  if (val === "" || val === null || val === undefined) return "";
+  const clean = String(val).replace(/\D/g, "");
+  if (!clean) return "";
+  return Number(clean).toLocaleString("es-PY");
+}
+
+function parsePygInput(val: string): number {
+  const clean = val.replace(/\D/g, "");
+  return clean ? parseInt(clean, 10) : 0;
+}
 
 interface CouponItem {
   id: string;
@@ -76,14 +92,53 @@ interface StudentItem {
 }
 
 interface OrderItem {
-  id: string; reference: string; customer_name: string; customer_email: string;
-  payment_method: string; status: string; payment_proof_path?: string | null; proof_url?: string | null; created_at: string;
+  id: string;
+  reference: string;
+  customer_name: string;
+  customer_email: string;
+  customer_phone?: string;
+  payment_method: string;
+  status: string;
+  payment_proof_path?: string | null;
+  proof_url?: string | null;
+  created_at: string;
   courses?: { name: string; course_uuid: string };
 }
 
+const TAB_MAP: Record<string, "form" | "students" | "courses" | "checkouts" | "orders" | "coupons" | "config"> = {
+  "matricular": "form",
+  "matricular-alumno": "form",
+  "alumnos": "students",
+  "cursos": "courses",
+  "checkouts": "checkouts",
+  "orders": "orders",
+  "pagos-pendientes": "orders",
+  "cupones": "coupons",
+  "config": "config",
+  "configuracion": "config",
+};
+
+const TAB_REVERSE_MAP: Record<string, string> = {
+  form: "matricular-alumno",
+  students: "alumnos",
+  courses: "cursos",
+  checkouts: "checkouts",
+  orders: "pagos-pendientes",
+  coupons: "cupones",
+  config: "configuracion",
+};
+
 export default function CampusPortalPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"form" | "students" | "courses" | "checkouts" | "orders" | "coupons" | "config">("form");
+  const [activeTab, setActiveTab] = useState<"form" | "students" | "courses" | "checkouts" | "orders" | "coupons" | "config">(() => {
+    if (typeof window !== "undefined") {
+      const tabParam = new URLSearchParams(window.location.search).get("tab");
+      if (tabParam && TAB_MAP[tabParam]) {
+        return TAB_MAP[tabParam];
+      }
+    }
+    return "form";
+  });
 
   // Form State
   const [name, setName] = useState("");
@@ -136,9 +191,18 @@ export default function CampusPortalPage() {
   const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
   const [previewCheckoutSlug, setPreviewCheckoutSlug] = useState<string | null>(null);
 
+  // Datos Bancarios State (CRUD para Checkouts)
+  const [bankSettings, setBankSettings] = useState<BankSettings>(DEFAULT_BANK_SETTINGS);
+  const [isLoadingBankSettings, setIsLoadingBankSettings] = useState(false);
+  const [isSavingBankSettings, setIsSavingBankSettings] = useState(false);
+  const [bankSettingsMessage, setBankSettingsMessage] = useState<string | null>(null);
+
+  // Mobile navigation state
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
   // Modal en Rojo de Eliminación Definitiva (Ciclo de borrado)
   const [confirmDeleteModal, setConfirmDeleteModal] = useState<{
-    type: "checkout" | "coupon" | "all_coupons";
+    type: "checkout" | "coupon" | "all_coupons" | "course";
     id?: string;
     title: string;
     description: string;
@@ -301,6 +365,7 @@ export default function CampusPortalPage() {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          code: editingCoupon.code,
           name: editingCoupon.name,
           discountType: editingCoupon.discount_type,
           discountValue: editingCoupon.discount_value,
@@ -340,6 +405,12 @@ export default function CampusPortalPage() {
         if (!res.ok) throw new Error(data.error || "Error al eliminar cupones.");
         setCoupons([]);
         setCouponMessage("Todos los cupones fueron eliminados correctamente.");
+      } else if (confirmDeleteModal.type === "course" && confirmDeleteModal.id) {
+        const res = await fetch(`/api/courses?uuid=${encodeURIComponent(confirmDeleteModal.id)}`, { method: "DELETE" });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "No se pudo eliminar el curso.");
+        setCourses((prev) => prev.filter((c) => c.course_uuid !== confirmDeleteModal.id));
+        setCoursesMessage("Curso eliminado correctamente del catálogo.");
       }
       setConfirmDeleteModal(null);
     } catch (err: unknown) {
@@ -485,7 +556,7 @@ ${successData.magicLink}`
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "No se pudo generar el enlace");
       setSuccessData(json.data);
-      setActiveTab("form");
+      switchTab("form");
     } catch (error: unknown) {
       alert(error instanceof Error ? error.message : "Error al generar enlace");
     } finally {
@@ -493,126 +564,234 @@ ${successData.magicLink}`
     }
   };
 
-  return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased">
-      {/* Top Banner / Navigation */}
-      <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-40">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-sky-500/20">
-              <GraduationCap className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-base font-bold text-white tracking-tight flex items-center gap-2">
-                Campus Portal
-                <span className="text-xs bg-sky-500/10 text-sky-400 border border-sky-500/20 px-2 py-0.5 rounded-full font-mono font-medium">
-                  Vercel + Supabase
-                </span>
-              </h1>
-              <p className="text-xs text-slate-400">
-                Matriculación de Alumnos y Checkout para LearnHouse LMS
-              </p>
-            </div>
-          </div>
+  const fetchBankSettings = async () => {
+    setIsLoadingBankSettings(true);
+    try {
+      const res = await fetch("/api/settings/bank");
+      if (res.ok) {
+        const data = await res.json();
+        setBankSettings(data);
+      }
+    } catch (err) {
+      console.error("Error al cargar datos bancarios:", err);
+    } finally {
+      setIsLoadingBankSettings(false);
+    }
+  };
 
-          <div className="flex items-center gap-2">
+  const saveBankSettingsHandler = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSavingBankSettings(true);
+    setBankSettingsMessage(null);
+    try {
+      const res = await fetch("/api/settings/bank", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(bankSettings),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error al guardar");
+      setBankSettingsMessage("¡Datos bancarios actualizados correctamente! Se reflejan de inmediato en todos los checkouts.");
+      setTimeout(() => setBankSettingsMessage(null), 4000);
+    } catch (err: unknown) {
+      setBankSettingsMessage(err instanceof Error ? err.message : "Error al guardar datos bancarios.");
+    } finally {
+      setIsSavingBankSettings(false);
+    }
+  };
+
+  const switchTab = (tab: "form" | "students" | "courses" | "checkouts" | "orders" | "coupons" | "config") => {
+    setActiveTab(tab);
+    setMobileNavOpen(false);
+    const slug = TAB_REVERSE_MAP[tab] || tab;
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("tab", slug);
+      window.history.pushState({}, "", url.toString());
+    }
+
+    if (tab === "students") void fetchStudents();
+    if (tab === "courses") void fetchCourses();
+    if (tab === "checkouts") void fetchCheckouts();
+    if (tab === "orders") void fetchOrders();
+    if (tab === "coupons") void fetchCoupons();
+    if (tab === "config") void fetchBankSettings();
+  };
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get("tab");
+      const initialTab = tabParam && TAB_MAP[tabParam] ? TAB_MAP[tabParam] : "form";
+      if (initialTab === "students") void fetchStudents();
+      if (initialTab === "courses") void fetchCourses();
+      if (initialTab === "checkouts") void fetchCheckouts();
+      if (initialTab === "orders") void fetchOrders();
+      if (initialTab === "coupons") void fetchCoupons();
+      if (initialTab === "config") void fetchBankSettings();
+      void fetchOrders();
+      void fetchBankSettings();
+    });
+  }, []);
+
+  const pendingOrdersCount = orders.filter((o) => o.status === "pending_review").length;
+
+  const navItems = [
+    { id: "form" as const, label: "Matricular Alumno", icon: UserPlus },
+    { id: "students" as const, label: "Alumnos & Matrículas", icon: Users },
+    { id: "courses" as const, label: "Cursos & Mapeo", icon: BookOpen },
+    { id: "orders" as const, label: "Pagos pendientes", icon: CheckCircle2, badge: pendingOrdersCount },
+    { id: "coupons" as const, label: "Cupones", icon: Sparkles },
+    { id: "checkouts" as const, label: "Links de Checkout", icon: CreditCard },
+    { id: "config" as const, label: "Configuración", icon: Settings },
+  ];
+
+  return (
+    <div className="min-h-screen bg-[#06080D] text-slate-100 font-sans antialiased flex flex-col lg:flex-row">
+      {/* Mobile Header */}
+      <header className="lg:hidden border-b border-slate-800 bg-[#0B0F17] px-4 py-3 flex items-center justify-between sticky top-0 z-40">
+        <div className="flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center shadow-md">
+            <GraduationCap className="w-4 h-4 text-white" />
+          </div>
+          <div>
+            <span className="font-bold text-sm text-white leading-none block">Campus Portal</span>
+            <span className="text-[10px] text-slate-400 leading-none block mt-0.5">Admin & Checkouts</span>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => setMobileNavOpen(!mobileNavOpen)}
+          className="p-2 rounded-lg bg-slate-800 text-slate-300 hover:text-white transition cursor-pointer"
+          aria-label="Abrir menú"
+        >
+          {mobileNavOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+        </button>
+      </header>
+
+      {/* Mobile Drawer */}
+      {mobileNavOpen && (
+        <div className="lg:hidden fixed inset-x-0 top-14 bg-[#0B0F17] border-b border-slate-800 p-4 z-30 space-y-1.5 shadow-2xl animate-fade-in">
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => switchTab(item.id)}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                activeTab === item.id
+                  ? "bg-sky-500/15 text-sky-400 border border-sky-500/30"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <item.icon className="w-4 h-4" />
+                <span>{item.label}</span>
+              </div>
+              {item.badge !== undefined && item.badge > 0 && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  {item.badge}
+                </span>
+              )}
+            </button>
+          ))}
+
+          <div className="pt-3 mt-2 border-t border-slate-800 flex items-center justify-between text-xs">
             <a
               href="https://campus.michaelsahlmann.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-300 hover:text-white hover:border-slate-600 transition"
+              className="flex items-center gap-1.5 text-slate-400 hover:text-white transition"
             >
               <ExternalLink className="w-3.5 h-3.5 text-sky-400" />
               Ver Campus
             </a>
             <button
+              type="button"
               onClick={async () => {
                 await fetch("/api/auth/logout", { method: "POST" });
                 router.push("/login");
               }}
-              className="text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-400 hover:text-red-400 hover:border-red-800 transition"
+              className="flex items-center gap-1 text-slate-400 hover:text-red-400 transition cursor-pointer"
             >
+              <LogOut className="w-3.5 h-3.5" />
               Salir
             </button>
           </div>
         </div>
+      )}
 
-        {/* Tab switcher */}
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 flex gap-1 -mb-px">
-          <button
-            onClick={() => setActiveTab("form")}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition ${
-              activeTab === "form"
-                ? "border-sky-500 text-sky-400"
-                : "border-transparent text-slate-400 hover:text-slate-200"
-            }`}
+      {/* Left Sidebar for Desktop */}
+      <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 bg-[#0B0F17] border-r border-slate-800/80 z-30">
+        {/* Sidebar Brand */}
+        <div className="h-16 flex items-center gap-3 px-5 border-b border-slate-800/80 bg-slate-950/40">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-sky-500/20 shrink-0">
+            <GraduationCap className="w-5 h-5 text-white" />
+          </div>
+          <div className="min-w-0">
+            <span className="font-bold text-sm text-white tracking-tight block truncate leading-tight">
+              Campus Portal
+            </span>
+            <span className="text-[10px] text-slate-400 block truncate leading-tight mt-0.5">
+              Admin & Checkouts
+            </span>
+          </div>
+        </div>
+
+        {/* Navigation Items */}
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+          {navItems.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              onClick={() => switchTab(item.id)}
+              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                activeTab === item.id
+                  ? "bg-sky-500/15 text-sky-400 border border-sky-500/30 shadow-sm"
+                  : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/80 border border-transparent"
+              }`}
+            >
+              <div className="flex items-center gap-2.5">
+                <item.icon className={`w-4 h-4 ${activeTab === item.id ? "text-sky-400" : "text-slate-400"}`} />
+                <span>{item.label}</span>
+              </div>
+              {item.badge !== undefined && item.badge > 0 && (
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                  {item.badge}
+                </span>
+              )}
+            </button>
+          ))}
+        </nav>
+
+        {/* Sidebar Footer */}
+        <div className="p-3 border-t border-slate-800/80 bg-slate-950/30 space-y-1 text-xs">
+          <a
+            href="https://campus.michaelsahlmann.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-slate-400 hover:text-white hover:bg-slate-900 transition"
           >
-            <UserPlus className="w-4 h-4" />
-            Matricular Alumno
-          </button>
+            <ExternalLink className="w-3.5 h-3.5 text-sky-400" />
+            <span>Ir a LearnHouse LMS</span>
+          </a>
+
           <button
-            onClick={() => {
-              setActiveTab("students");
-              void fetchStudents();
+            type="button"
+            onClick={async () => {
+              await fetch("/api/auth/logout", { method: "POST" });
+              router.push("/login");
             }}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition ${
-              activeTab === "students"
-                ? "border-sky-500 text-sky-400"
-                : "border-transparent text-slate-400 hover:text-slate-200"
-            }`}
+            className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-slate-400 hover:text-red-400 hover:bg-slate-900 transition cursor-pointer"
           >
-            <Users className="w-4 h-4" />
-            Alumnos & Matrículas
-          </button>
-          <button
-            onClick={() => {
-              setActiveTab("courses");
-              void fetchCourses();
-            }}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition ${
-              activeTab === "courses"
-                ? "border-sky-500 text-sky-400"
-                : "border-transparent text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            <BookOpen className="w-4 h-4" />
-            Cursos & Mapeo
-          </button>
-          <button onClick={() => { setActiveTab("orders"); void fetchOrders(); }} className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition cursor-pointer ${activeTab === "orders" ? "border-sky-500 text-sky-400" : "border-transparent text-slate-400 hover:text-slate-200"}`}>
-            <CheckCircle2 className="w-4 h-4" /> Pagos pendientes
-          </button>
-          <button onClick={() => { setActiveTab("coupons"); void fetchCoupons(); }} className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition cursor-pointer ${activeTab === "coupons" ? "border-sky-500 text-sky-400" : "border-transparent text-slate-400 hover:text-slate-200"}`}>
-            <Sparkles className="w-4 h-4" /> Cupones
-          </button>
-          <button
-            onClick={() => {
-              setActiveTab("checkouts");
-              void fetchCheckouts();
-            }}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition cursor-pointer ${
-              activeTab === "checkouts"
-                ? "border-sky-500 text-sky-400"
-                : "border-transparent text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            <CreditCard className="w-4 h-4" /> Checkouts
-          </button>
-          <button
-            onClick={() => setActiveTab("config")}
-            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition ${
-              activeTab === "config"
-                ? "border-sky-500 text-sky-400"
-                : "border-transparent text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            <Settings className="w-4 h-4" />
-            Configuración
+            <LogOut className="w-3.5 h-3.5" />
+            <span>Cerrar sesión</span>
           </button>
         </div>
-      </header>
+      </aside>
 
       {/* Main Content Area */}
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
+      <main className="lg:pl-64 flex-1 flex flex-col min-h-screen bg-[#06080D]">
+        <div className="max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-1">
         {/* TAB 1: FORMULARIO DE MATRICULACION */}
         {activeTab === "form" && (
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -744,7 +923,7 @@ ${successData.magicLink}`
                         onChange={(e) => setPaymentMethod(e.target.value)}
                         className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-sky-500 transition"
                       >
-                        <option value="manual_transfer">Transferencia Bancaria (SIPAP)</option>
+                        <option value="manual_transfer">Transferencia bancaria</option>
                         <option value="cash_pos">Efectivo / POS / Cobro directo</option>
                         <option value="stripe">Stripe</option>
                         <option value="mercadopago">MercadoPago</option>
@@ -757,10 +936,12 @@ ${successData.magicLink}`
                         Monto Pagado (PYG)
                       </label>
                       <input
-                        type="number"
-                        value={amountPaid}
-                        onChange={(e) => setAmountPaid(Number(e.target.value))}
-                        className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-sky-500 transition"
+                        type="text"
+                        inputMode="numeric"
+                        value={formatPygInput(amountPaid)}
+                        onChange={(e) => setAmountPaid(parsePygInput(e.target.value))}
+                        placeholder="1.500.000"
+                        className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white font-mono focus:outline-none focus:border-sky-500 transition"
                       />
                     </div>
                   </div>
@@ -1183,24 +1364,43 @@ ${successData.magicLink}`
                     </a>
                     <div>
                       <span className="block text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-1">
-                        Link de checkout para enviar:
+                        Acciones & Checkout:
                       </span>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center justify-between pt-1">
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setPreviewCheckoutSlug(course.course_uuid)}
+                            className="text-xs text-emerald-400 hover:text-emerald-300 font-medium flex items-center gap-1 cursor-pointer"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            Previsualizar
+                          </button>
+                          <span className="text-slate-600">·</span>
+                          <button
+                            type="button"
+                            onClick={() => copyCheckoutLink(course.course_uuid)}
+                            className="text-xs text-sky-400 hover:text-sky-300 font-medium cursor-pointer"
+                          >
+                            {copiedLink ? "¡Copiado!" : "Copiar link"}
+                          </button>
+                        </div>
+
                         <button
                           type="button"
-                          onClick={() => setPreviewCheckoutSlug(course.course_uuid)}
-                          className="text-xs text-emerald-400 hover:text-emerald-300 font-medium flex items-center gap-1 cursor-pointer"
+                          onClick={() => {
+                            setConfirmDeleteModal({
+                              type: "course",
+                              id: course.course_uuid,
+                              title: `¿Eliminar "${course.name}"?`,
+                              description: `Esta acción eliminará el curso "${course.name}" de la base de datos y del catálogo del portal. Si tiene alumnos matriculados, Supabase prevendrá la eliminación por integridad referencial.`,
+                            });
+                          }}
+                          className="text-xs text-rose-400 hover:text-rose-300 font-medium flex items-center gap-1 cursor-pointer px-2 py-1 rounded hover:bg-rose-950/50 transition"
+                          title="Eliminar curso del catálogo"
                         >
-                          <Eye className="w-3.5 h-3.5" />
-                          Previsualizar aquí
-                        </button>
-                        <span className="text-slate-600">·</span>
-                        <button
-                          type="button"
-                          onClick={() => copyCheckoutLink(course.course_uuid)}
-                          className="text-xs text-sky-400 hover:text-sky-300 font-medium cursor-pointer"
-                        >
-                          {copiedLink ? "¡Copiado!" : "Copiar link"}
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Eliminar
                         </button>
                       </div>
                     </div>
@@ -1285,13 +1485,13 @@ ${successData.magicLink}`
                       Precio (PYG)
                     </label>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
                       required
-                      min={0}
-                      step={10000}
-                      value={checkoutPrice}
-                      onChange={(e) => setCheckoutPrice(Number(e.target.value))}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 text-sm"
+                      placeholder="1.500.000"
+                      value={formatPygInput(checkoutPrice)}
+                      onChange={(e) => setCheckoutPrice(parsePygInput(e.target.value))}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white font-mono placeholder-slate-500 focus:outline-none focus:border-emerald-500 text-sm"
                     />
                   </div>
                 </div>
@@ -1406,9 +1606,121 @@ ${successData.magicLink}`
 
         {activeTab === "orders" && (
           <div className="space-y-6">
-            <div className="flex items-center justify-between"><div><h2 className="text-xl font-bold text-white">Pagos pendientes</h2><p className="text-xs text-slate-400">Confirmá un pago para liberar automáticamente el acceso.</p></div><button onClick={() => void fetchOrders()} disabled={isLoadingOrders} className="px-3 py-2 bg-slate-800 rounded-xl text-xs">{isLoadingOrders ? "Actualizando..." : "Actualizar"}</button></div>
-            {orderMessage && <div className="p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs">{orderMessage}</div>}
-            <div className="space-y-3">{orders.filter((order) => order.status === "pending_review").map((order) => <div key={order.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"><div><p className="font-bold">{order.customer_name} <span className="text-sky-400 font-mono text-xs">{order.reference}</span></p><p className="text-sm text-slate-300">{order.customer_email} · {order.courses?.name || "Curso"}</p><p className="text-xs text-slate-500">{order.payment_method === "transfer" ? "Transferencia" : "Efectivo"}{order.payment_proof_path ? " · Con comprobante" : " · Declaró pago"}</p>{order.proof_url && <a href={order.proof_url} target="_blank" rel="noreferrer" className="text-xs text-sky-400">Ver comprobante</a>}</div><button onClick={() => void confirmOrder(order.id)} className="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg text-sm font-semibold">Confirmar y liberar</button></div>)}{!isLoadingOrders && orders.filter((order) => order.status === "pending_review").length === 0 && <p className="text-slate-400 text-sm">No hay pagos pendientes.</p>}</div>
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                  Pagos Pendientes de Verificación
+                </h2>
+                <p className="text-xs text-slate-400">
+                  Revisa los pagos registrados por los alumnos y confirma para liberar automáticamente su usuario y matrícula en LearnHouse.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => void fetchOrders()}
+                disabled={isLoadingOrders}
+                className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isLoadingOrders ? "animate-spin" : ""}`} />
+                {isLoadingOrders ? "Actualizando..." : "Actualizar"}
+              </button>
+            </div>
+
+            {orderMessage && (
+              <div className="p-3.5 rounded-xl bg-slate-900 border border-slate-700 text-emerald-400 text-xs flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>{orderMessage}</span>
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {orders
+                .filter((order) => order.status === "pending_review")
+                .map((order) => (
+                  <div
+                    key={order.id}
+                    className="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
+                  >
+                    <div className="space-y-1.5 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-white text-sm">
+                          {order.customer_name}
+                        </span>
+                        <span className="text-sky-400 font-mono text-xs bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20 font-semibold">
+                          #{order.reference}
+                        </span>
+                        {order.customer_phone && (
+                          <a
+                            href={`https://wa.me/${order.customer_phone.replace(/\D/g, "")}?text=${encodeURIComponent(
+                              `Hola ${order.customer_name}, te escribo del equipo de soporte de Campus Michael Sahlmann respecto a tu pago #${order.reference}.`
+                            )}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 font-semibold bg-emerald-500/10 hover:bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/30 transition cursor-pointer"
+                            title="Contactar al alumno por WhatsApp"
+                          >
+                            <MessageSquare className="w-3 h-3" />
+                            <span>WhatsApp ({order.customer_phone})</span>
+                          </a>
+                        )}
+                      </div>
+
+                      <p className="text-xs text-slate-300 truncate">
+                        <span className="text-slate-400">{order.customer_email}</span>
+                        <span className="mx-1.5 text-slate-600">·</span>
+                        <span className="text-white font-medium">{order.courses?.name || "Curso"}</span>
+                      </p>
+
+                      <div className="flex items-center gap-2 flex-wrap text-xs pt-0.5">
+                        <span className="text-slate-400">
+                          Método:{" "}
+                          <strong className="text-slate-200">
+                            {order.payment_method === "transfer" ? "Transferencia bancaria" : "Pago coordinado"}
+                          </strong>
+                        </span>
+                        <span className="text-slate-600">·</span>
+                        <span className={order.payment_proof_path ? "text-emerald-400" : "text-amber-400"}>
+                          {order.payment_proof_path ? "Con comprobante adjunto" : "Declaró pago"}
+                        </span>
+                        {order.proof_url && (
+                          <>
+                            <span className="text-slate-600">·</span>
+                            <a
+                              href={order.proof_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="inline-flex items-center gap-1 text-sky-400 hover:text-sky-300 font-medium underline underline-offset-2"
+                            >
+                              <Eye className="w-3 h-3" />
+                              Ver comprobante
+                            </a>
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => void confirmOrder(order.id)}
+                      className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-emerald-600/20 cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      Confirmar y liberar acceso
+                    </button>
+                  </div>
+                ))}
+
+              {!isLoadingOrders && orders.filter((order) => order.status === "pending_review").length === 0 && (
+                <div className="p-8 text-center bg-slate-900/50 border border-slate-800/80 rounded-2xl">
+                  <CheckCircle2 className="w-8 h-8 text-slate-600 mx-auto mb-2" />
+                  <p className="text-slate-300 font-medium text-sm">No hay pagos pendientes de revisión</p>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Cuando un alumno complete el checkout, aparecerá aquí para su liberación.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
@@ -1525,10 +1837,18 @@ ${successData.magicLink}`
                       required
                       min={1}
                       max={couponType === "percentage" ? 100 : undefined}
-                      type="number"
-                      value={couponValue}
-                      onChange={(e) => setCouponValue(Number(e.target.value))}
-                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 text-xs sm:text-sm"
+                      type={couponType === "percentage" ? "number" : "text"}
+                      inputMode={couponType === "percentage" ? "numeric" : "numeric"}
+                      placeholder={couponType === "percentage" ? "10" : "150.000"}
+                      value={couponType === "percentage" ? couponValue : formatPygInput(couponValue)}
+                      onChange={(e) =>
+                        setCouponValue(
+                          couponType === "percentage"
+                            ? Number(e.target.value)
+                            : parsePygInput(e.target.value)
+                        )
+                      }
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white font-mono placeholder-slate-500 focus:outline-none focus:border-emerald-500 text-xs sm:text-sm"
                     />
                   </div>
                 </div>
@@ -1687,6 +2007,127 @@ ${successData.magicLink}`
               </p>
             </div>
 
+            {/* Tarjeta de Datos Bancarios para Checkout (CRUD) */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div className="flex items-center gap-2.5">
+                  <span className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
+                    <Building2 className="w-5 h-5" />
+                  </span>
+                  <div>
+                    <h3 className="font-bold text-white text-base">Datos Bancarios para Checkouts</h3>
+                    <p className="text-xs text-slate-400">
+                      Información bancaria visible para los alumnos que elijan pagar por transferencia bancaria.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => void fetchBankSettings()}
+                  disabled={isLoadingBankSettings}
+                  className="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer"
+                  title="Recargar datos bancarios"
+                >
+                  <RefreshCw className={`w-4 h-4 ${isLoadingBankSettings ? "animate-spin" : ""}`} />
+                </button>
+              </div>
+
+              {bankSettingsMessage && (
+                <div className="p-3.5 rounded-xl bg-emerald-950/60 border border-emerald-800/80 text-emerald-300 text-xs flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>{bankSettingsMessage}</span>
+                </div>
+              )}
+
+              <form onSubmit={saveBankSettingsHandler} className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <label className="block font-semibold text-slate-300 mb-1">
+                      1. Alias de transferencia <span className="text-emerald-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={bankSettings.alias}
+                      onChange={(e) => setBankSettings({ ...bankSettings, alias: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white font-mono focus:outline-none focus:border-emerald-500 text-xs sm:text-sm"
+                      placeholder="pagos@michaelsahlmann.com"
+                    />
+                    <span className="text-[10px] text-slate-500 mt-1 block">
+                      Es el campo principal y el primero que ven los alumnos.
+                    </span>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-300 mb-1">
+                      2. Titular de la cuenta <span className="text-emerald-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={bankSettings.titular}
+                      onChange={(e) => setBankSettings({ ...bankSettings, titular: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-emerald-500 text-xs sm:text-sm"
+                      placeholder="Michael Sahlmann"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-300 mb-1">
+                      3. Entidad Bancaria <span className="text-emerald-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={bankSettings.banco}
+                      onChange={(e) => setBankSettings({ ...bankSettings, banco: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-emerald-500 text-xs sm:text-sm"
+                      placeholder="Banco Itaú"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-300 mb-1">
+                      4. N° de Cuenta <span className="text-emerald-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={bankSettings.cuenta}
+                      onChange={(e) => setBankSettings({ ...bankSettings, cuenta: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white font-mono focus:outline-none focus:border-emerald-500 text-xs sm:text-sm"
+                      placeholder="720000000"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block font-semibold text-slate-300 mb-1">
+                      5. Cédula de Identidad / RUC <span className="text-emerald-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={bankSettings.ci_ruc}
+                      onChange={(e) => setBankSettings({ ...bankSettings, ci_ruc: e.target.value })}
+                      className="w-full sm:w-1/2 bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white font-mono focus:outline-none focus:border-emerald-500 text-xs sm:text-sm"
+                      placeholder="4567890-1"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-2 border-t border-slate-800">
+                  <button
+                    type="submit"
+                    disabled={isSavingBankSettings}
+                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-emerald-600/20 cursor-pointer flex items-center gap-2"
+                  >
+                    <Building2 className="w-4 h-4" />
+                    {isSavingBankSettings ? "Guardando datos..." : "Guardar Datos Bancarios"}
+                  </button>
+                </div>
+              </form>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Variables de Entorno */}
               <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
@@ -1804,17 +2245,37 @@ ${successData.magicLink}`
               </div>
 
               <form onSubmit={handleUpdateCoupon} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-400 mb-1">
-                    Nombre Interno
-                  </label>
-                  <input
-                    required
-                    type="text"
-                    value={editingCoupon.name}
-                    onChange={(e) => setEditingCoupon({ ...editingCoupon, name: e.target.value })}
-                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white text-sm"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">
+                      Código / ID del Cupón
+                    </label>
+                    <input
+                      required
+                      type="text"
+                      value={editingCoupon.code}
+                      onChange={(e) =>
+                        setEditingCoupon({
+                          ...editingCoupon,
+                          code: e.target.value.toUpperCase().replace(/\s/g, ""),
+                        })
+                      }
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white font-mono uppercase text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">
+                      Nombre Interno
+                    </label>
+                    <input
+                      required
+                      type="text"
+                      value={editingCoupon.name}
+                      onChange={(e) => setEditingCoupon({ ...editingCoupon, name: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white text-sm"
+                    />
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
@@ -1845,15 +2306,23 @@ ${successData.magicLink}`
                       required
                       min={1}
                       max={editingCoupon.discount_type === "percentage" ? 100 : undefined}
-                      type="number"
-                      value={editingCoupon.discount_value}
+                      type={editingCoupon.discount_type === "percentage" ? "number" : "text"}
+                      inputMode="numeric"
+                      value={
+                        editingCoupon.discount_type === "percentage"
+                          ? editingCoupon.discount_value
+                          : formatPygInput(editingCoupon.discount_value)
+                      }
                       onChange={(e) =>
                         setEditingCoupon({
                           ...editingCoupon,
-                          discount_value: Number(e.target.value),
+                          discount_value:
+                            editingCoupon.discount_type === "percentage"
+                              ? Number(e.target.value)
+                              : parsePygInput(e.target.value),
                         })
                       }
-                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white text-sm"
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white font-mono text-sm"
                     />
                   </div>
                 </div>
@@ -1945,6 +2414,7 @@ ${successData.magicLink}`
             </div>
           </div>
         )}
+        </div>
       </main>
     </div>
   );

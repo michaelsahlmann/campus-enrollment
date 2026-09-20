@@ -113,3 +113,67 @@ export async function POST() {
     return NextResponse.json({ error: getErrorMessage(error) }, { status: 502 });
   }
 }
+
+export async function PUT(request: Request) {
+  const supabase = getAdminSupabase();
+  if (!supabase) return NextResponse.json({ error: "Supabase no está configurado." }, { status: 503 });
+
+  try {
+    const body = (await request.json()) as {
+      id?: string;
+      course_uuid?: string;
+      price_pyg?: number;
+      is_active?: boolean;
+    };
+
+    if (!body.id && !body.course_uuid) {
+      return NextResponse.json({ error: "Se requiere ID o UUID del curso." }, { status: 400 });
+    }
+
+    const updateData: Record<string, unknown> = {};
+    if (body.price_pyg !== undefined) updateData.price_pyg = Number(body.price_pyg);
+    if (body.is_active !== undefined) updateData.is_active = body.is_active;
+
+    let query = supabase.from("courses").update(updateData);
+    if (body.id) {
+      query = query.eq("id", body.id);
+    } else if (body.course_uuid) {
+      query = query.eq("course_uuid", body.course_uuid);
+    }
+
+    const { error } = await query;
+    if (error) throw error;
+    return NextResponse.json({ ok: true });
+  } catch (err: unknown) {
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  const supabase = getAdminSupabase();
+  if (!supabase) return NextResponse.json({ error: "Supabase no está configurado." }, { status: 503 });
+
+  try {
+    const { searchParams } = new URL(request.url);
+    const courseId = searchParams.get("id");
+    const courseUuid = searchParams.get("uuid");
+
+    if (!courseId && !courseUuid) {
+      return NextResponse.json({ error: "Se requiere ID o UUID del curso a eliminar." }, { status: 400 });
+    }
+
+    let query = supabase.from("courses").delete();
+    if (courseId) {
+      query = query.eq("id", courseId);
+    } else if (courseUuid) {
+      query = query.eq("course_uuid", courseUuid);
+    }
+
+    const { error } = await query;
+    if (error) throw error;
+    return NextResponse.json({ ok: true });
+  } catch (err: unknown) {
+    return NextResponse.json({ error: getErrorMessage(err) }, { status: 500 });
+  }
+}
+

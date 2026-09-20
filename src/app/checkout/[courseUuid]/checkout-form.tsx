@@ -20,6 +20,7 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
+import { BankSettings, DEFAULT_BANK_SETTINGS } from "@/lib/settings";
 
 type Course = {
   name: string;
@@ -31,18 +32,20 @@ type Course = {
 export default function CheckoutForm({
   course,
   checkoutSlug,
+  bankSettings = DEFAULT_BANK_SETTINGS,
 }: {
   course: Course;
   checkoutSlug: string;
+  bankSettings?: BankSettings;
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [confirmEmail, setConfirmEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [method, setMethod] = useState<"transfer" | "cash">("transfer");
+  const [hasProof, setHasProof] = useState<"yes" | "no">("yes");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
-  const [noProofDeclared, setNoProofDeclared] = useState(false);
   const [sending, setSending] = useState(false);
   const [reference, setReference] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -91,7 +94,6 @@ export default function CheckoutForm({
     }
 
     setSelectedFile(file);
-    setNoProofDeclared(false);
   };
 
   const removeFile = () => {
@@ -157,7 +159,7 @@ export default function CheckoutForm({
       if (coupon) {
         formData.set("coupon_code", coupon.code);
       }
-      if (selectedFile && method === "transfer") {
+      if (selectedFile && method === "transfer" && hasProof === "yes") {
         formData.set("payment_proof", selectedFile);
       }
 
@@ -179,11 +181,11 @@ export default function CheckoutForm({
 
   // PANTALLA DE CONFIRMACION / SOLICITUD ENVIADA
   if (reference) {
-    const whatsappNotification = `Hola Michael, acabo de registrar mi pago para el curso "${course.name}".
+    const whatsappNotification = `Hola Equipo de Soporte, acabo de registrar mi pago para el curso "${course.name}".
 Referencia: #${reference}
 Alumno: ${name}
 Correo: ${email}
-${method === "transfer" ? (selectedFile ? "Adjunto mi comprobante de transferencia." : "Realicé la transferencia.") : "El pago fue realizado en efectivo / coordinado previamente."}`;
+${phone ? `Teléfono: ${phone}\n` : ""}${method === "transfer" ? (selectedFile && hasProof === "yes" ? "Adjunto mi comprobante de transferencia bancaria." : "Realicé la transferencia bancaria.") : "El pago fue coordinado previamente."}`;
 
     return (
       <main className="min-h-screen bg-[#0B0F17] text-slate-100 py-12 px-4 sm:px-6 flex flex-col items-center justify-center">
@@ -196,7 +198,7 @@ ${method === "transfer" ? (selectedFile ? "Adjunto mi comprobante de transferenc
               Solicitud de Matrícula Registrada
             </h1>
             <p className="text-xs sm:text-sm text-slate-400">
-              Tu solicitud para <strong className="text-slate-200">{course.name}</strong> ha sido enviada al administrador.
+              Tu solicitud para <strong className="text-slate-200">{course.name}</strong> ha sido enviada al equipo de soporte.
             </p>
           </div>
 
@@ -236,10 +238,10 @@ ${method === "transfer" ? (selectedFile ? "Adjunto mi comprobante de transferenc
           <div className="space-y-2 text-xs text-slate-300 bg-[#0B0F17]/50 p-4 rounded-xl border border-slate-800/60">
             <h3 className="font-semibold text-slate-200">Próximos pasos:</h3>
             <p>
-              1. Michael revisará tu solicitud en el panel de control.
+              1. El equipo de soporte verificará tu comprobante o coordinación de pago.
             </p>
             <p>
-              2. Al confirmarla, se creará tu usuario en <code className="text-sky-400">campus.michaelsahlmann.com</code> y recibirás el enlace de acceso directo a tu correo (<span className="text-slate-200 font-mono">{email}</span>) y WhatsApp.
+              2. Al confirmarlo, se activará tu acceso en <code className="text-sky-400">campus.michaelsahlmann.com</code> y recibirás el enlace directo a tu correo (<span className="text-slate-200 font-mono">{email}</span>) y WhatsApp.
             </p>
           </div>
 
@@ -252,7 +254,7 @@ ${method === "transfer" ? (selectedFile ? "Adjunto mi comprobante de transferenc
               className="w-full py-3 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-600/20 cursor-pointer"
             >
               <Phone className="w-4 h-4" />
-              Avisar a Michael por WhatsApp
+              Avisar al Soporte por WhatsApp
             </a>
 
             <a
@@ -271,7 +273,7 @@ ${method === "transfer" ? (selectedFile ? "Adjunto mi comprobante de transferenc
 
   return (
     <div className="min-h-screen bg-[#0B0F17] text-slate-100 antialiased selection:bg-emerald-500/30 selection:text-white">
-      {/* BARRA SUPERIOR SOBRIA */}
+      {/* BARRA SUPERIOR */}
       <header className="border-b border-slate-800/80 bg-[#111827]/80 backdrop-blur-md sticky top-0 z-30">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
@@ -283,7 +285,7 @@ ${method === "transfer" ? (selectedFile ? "Adjunto mi comprobante de transferenc
                 Campus Michael Sahlmann
               </span>
               <span className="text-[10px] text-slate-400 block leading-tight">
-                Registro de Matrícula
+                Inscripción Oficial
               </span>
             </div>
           </div>
@@ -380,7 +382,7 @@ ${method === "transfer" ? (selectedFile ? "Adjunto mi comprobante de transferenc
                       <label className="text-xs font-semibold text-slate-300">
                         Correo Electrónico <span className="text-rose-400">*</span>
                       </label>
-                      <span className="text-[10px] text-slate-400">Login para el Campus</span>
+                      <span className="text-[10px] text-slate-400">Acceso al Campus</span>
                     </div>
                     <div className="relative">
                       <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
@@ -447,13 +449,13 @@ ${method === "transfer" ? (selectedFile ? "Adjunto mi comprobante de transferenc
                       />
                     </div>
                     <span className="text-[10px] text-slate-400 mt-1 block">
-                      Para enviarte el enlace de acceso directo por WhatsApp.
+                      Para enviarte el enlace directo y asistencia del equipo de soporte.
                     </span>
                   </div>
                 </div>
               </section>
 
-              {/* PASO 2: FORMA DE PAGO REAL */}
+              {/* PASO 2: FORMA DE PAGO */}
               <section className="bg-[#111827] border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xl space-y-4">
                 <div className="flex items-center gap-2.5 pb-3 border-b border-slate-800">
                   <span className="w-6 h-6 rounded-full bg-emerald-500/10 text-emerald-400 font-bold text-xs flex items-center justify-center border border-emerald-500/20">
@@ -471,7 +473,7 @@ ${method === "transfer" ? (selectedFile ? "Adjunto mi comprobante de transferenc
 
                 {/* SELECTOR DE 2 OPCIONES REALES */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {/* Opción 1: Transferencia Bancaria */}
+                  {/* Opción 1: Transferencia bancaria */}
                   <button
                     type="button"
                     onClick={() => {
@@ -488,7 +490,7 @@ ${method === "transfer" ? (selectedFile ? "Adjunto mi comprobante de transferenc
                     </div>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <span className="font-semibold text-xs sm:text-sm text-white">Transferencia SIPAP</span>
+                        <span className="font-semibold text-xs sm:text-sm text-white">Transferencia bancaria</span>
                       </div>
                       <span className="text-[11px] text-slate-400 block mt-0.5">
                         Transferir y/o subir comprobante
@@ -496,7 +498,7 @@ ${method === "transfer" ? (selectedFile ? "Adjunto mi comprobante de transferenc
                     </div>
                   </button>
 
-                  {/* Opción 2: Ya pagué (Efectivo presencial o coordinado) */}
+                  {/* Opción 2: Ya pagué (Coordinado) */}
                   <button
                     type="button"
                     onClick={() => {
@@ -515,9 +517,12 @@ ${method === "transfer" ? (selectedFile ? "Adjunto mi comprobante de transferenc
                     <div>
                       <div className="flex items-center gap-1.5">
                         <span className="font-semibold text-xs sm:text-sm text-white">Ya pagué</span>
+                        <span className="text-[10px] font-semibold uppercase tracking-wider bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded">
+                          Coordinado
+                        </span>
                       </div>
                       <span className="text-[11px] text-slate-400 block mt-0.5">
-                        Efectivo presencial o coordinado
+                        Efectivo o coordinado previamente
                       </span>
                     </div>
                   </button>
@@ -526,172 +531,231 @@ ${method === "transfer" ? (selectedFile ? "Adjunto mi comprobante de transferenc
                 {/* SI SELECCIONA TRANSFERENCIA BANCARIA */}
                 {method === "transfer" && (
                   <div className="space-y-4 pt-1 animate-fade-in">
-                    {/* Tarjeta de Datos Bancarios de Michael */}
+                    {/* Tarjeta de Datos Bancarios con orden exacto y botones individuales de copiado */}
                     <div className="bg-[#0B0F17] rounded-xl border border-slate-800 p-4 space-y-3">
                       <div className="flex items-center justify-between pb-2 border-b border-slate-800/80">
                         <span className="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
                           <Building2 className="w-3.5 h-3.5" />
-                          Datos para Transferir (SIPAP)
+                          Datos para Transferencia Bancaria
                         </span>
                         <span className="text-xs font-mono font-bold text-white">
                           {finalPrice.toLocaleString("es-PY")} PYG
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                        <div className="bg-[#111827] p-2.5 rounded-lg border border-slate-800/60">
-                          <span className="text-[10px] text-slate-500 block">Banco:</span>
-                          <span className="font-semibold text-slate-200">Banco Itaú / SIPAP</span>
-                        </div>
-
-                        <div className="bg-[#111827] p-2.5 rounded-lg border border-slate-800/60">
-                          <span className="text-[10px] text-slate-500 block">Titular:</span>
-                          <span className="font-semibold text-slate-200">Michael Sahlmann</span>
-                        </div>
-
-                        {/* N° de Cuenta con Copiado */}
-                        <div className="bg-[#111827] p-2.5 rounded-lg border border-slate-800/60 flex items-center justify-between">
-                          <div>
-                            <span className="text-[10px] text-slate-500 block">N° de Cuenta (Caja de Ahorro):</span>
-                            <span className="font-mono font-bold text-white">720000000</span>
+                      <div className="space-y-2 text-xs">
+                        {/* 1. Alias de transferencia (Destacado primero) */}
+                        <div className="bg-[#111827] p-3 rounded-lg border border-emerald-500/30 flex items-center justify-between">
+                          <div className="min-w-0 pr-2">
+                            <span className="text-[10px] text-emerald-400 font-semibold block uppercase tracking-wider">
+                              1. Alias de transferencia:
+                            </span>
+                            <span className="font-mono text-emerald-300 font-bold text-xs sm:text-sm break-all">
+                              {bankSettings.alias}
+                            </span>
                           </div>
                           <button
                             type="button"
-                            onClick={() => copyToClipboard("720000000", "acc")}
-                            className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer"
-                            title="Copiar N° de cuenta"
+                            onClick={() => copyToClipboard(bankSettings.alias, "alias")}
+                            className="flex items-center gap-1 text-xs font-medium text-emerald-400 hover:text-emerald-300 px-2.5 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 cursor-pointer shrink-0 transition"
+                            title="Copiar Alias"
                           >
-                            {copiedBankField === "acc" ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                            {copiedBankField === "alias" ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                            <span>{copiedBankField === "alias" ? "¡Copiado!" : "Copiar"}</span>
                           </button>
                         </div>
 
-                        {/* CI / RUC con Copiado */}
+                        {/* 2. Titular */}
                         <div className="bg-[#111827] p-2.5 rounded-lg border border-slate-800/60 flex items-center justify-between">
-                          <div>
-                            <span className="text-[10px] text-slate-500 block">CI / RUC:</span>
-                            <span className="font-mono font-bold text-white">4567890-1</span>
+                          <div className="min-w-0 pr-2">
+                            <span className="text-[10px] text-slate-500 block">2. Titular de la cuenta:</span>
+                            <span className="font-semibold text-slate-200 truncate block">
+                              {bankSettings.titular}
+                            </span>
                           </div>
                           <button
                             type="button"
-                            onClick={() => copyToClipboard("4567890-1", "ruc")}
-                            className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer"
-                            title="Copiar RUC"
+                            onClick={() => copyToClipboard(bankSettings.titular, "titular")}
+                            className="flex items-center gap-1 text-[11px] text-slate-300 hover:text-white px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 transition cursor-pointer shrink-0"
+                            title="Copiar Titular"
                           >
-                            {copiedBankField === "ruc" ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                            {copiedBankField === "titular" ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                            <span>{copiedBankField === "titular" ? "¡Copiado!" : "Copiar"}</span>
                           </button>
                         </div>
-                      </div>
 
-                      {/* Alias SIPAP */}
-                      <div className="bg-[#111827] p-2.5 rounded-lg border border-slate-800/60 flex items-center justify-between text-xs">
-                        <div>
-                          <span className="text-[10px] text-slate-500 block">Alias SIPAP / Email de Transferencia:</span>
-                          <span className="font-mono text-emerald-400 font-semibold">pagos@michaelsahlmann.com</span>
+                        {/* 3. Banco */}
+                        <div className="bg-[#111827] p-2.5 rounded-lg border border-slate-800/60 flex items-center justify-between">
+                          <div className="min-w-0 pr-2">
+                            <span className="text-[10px] text-slate-500 block">3. Entidad Bancaria:</span>
+                            <span className="font-semibold text-slate-200 truncate block">
+                              {bankSettings.banco}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(bankSettings.banco, "banco")}
+                            className="flex items-center gap-1 text-[11px] text-slate-300 hover:text-white px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 transition cursor-pointer shrink-0"
+                            title="Copiar Banco"
+                          >
+                            {copiedBankField === "banco" ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                            <span>{copiedBankField === "banco" ? "¡Copiado!" : "Copiar"}</span>
+                          </button>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => copyToClipboard("pagos@michaelsahlmann.com", "alias")}
-                          className="flex items-center gap-1 text-[11px] font-medium text-emerald-400 hover:text-emerald-300 px-2 py-1 rounded bg-emerald-500/10 cursor-pointer"
-                        >
-                          {copiedBankField === "alias" ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-                          {copiedBankField === "alias" ? "Copiado" : "Copiar"}
-                        </button>
+
+                        {/* 4. N° de Cuenta */}
+                        <div className="bg-[#111827] p-2.5 rounded-lg border border-slate-800/60 flex items-center justify-between">
+                          <div className="min-w-0 pr-2">
+                            <span className="text-[10px] text-slate-500 block">4. N° de Cuenta:</span>
+                            <span className="font-mono font-bold text-white text-xs sm:text-sm">
+                              {bankSettings.cuenta}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(bankSettings.cuenta, "cuenta")}
+                            className="flex items-center gap-1 text-[11px] text-slate-300 hover:text-white px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 transition cursor-pointer shrink-0"
+                            title="Copiar N° de Cuenta"
+                          >
+                            {copiedBankField === "cuenta" ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                            <span>{copiedBankField === "cuenta" ? "¡Copiado!" : "Copiar"}</span>
+                          </button>
+                        </div>
+
+                        {/* 5. Cédula de Identidad / RUC */}
+                        <div className="bg-[#111827] p-2.5 rounded-lg border border-slate-800/60 flex items-center justify-between">
+                          <div className="min-w-0 pr-2">
+                            <span className="text-[10px] text-slate-500 block">5. Cédula de Identidad / RUC:</span>
+                            <span className="font-mono font-bold text-white text-xs sm:text-sm">
+                              {bankSettings.ci_ruc}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(bankSettings.ci_ruc, "ci_ruc")}
+                            className="flex items-center gap-1 text-[11px] text-slate-300 hover:text-white px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 transition cursor-pointer shrink-0"
+                            title="Copiar CI / RUC"
+                          >
+                            {copiedBankField === "ci_ruc" ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                            <span>{copiedBankField === "ci_ruc" ? "¡Copiado!" : "Copiar"}</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Subida de Comprobante o Declarar Pago */}
-                    <div className="space-y-2">
+                    {/* PREGUNTA: ¿Tenés comprobante de pago? */}
+                    <div className="bg-[#0B0F17] rounded-xl border border-slate-800 p-4 space-y-3">
                       <div className="flex items-center justify-between">
-                        <label className="text-xs font-semibold text-slate-300">
-                          Comprobante de Transferencia
+                        <label className="text-xs font-semibold text-slate-200">
+                          ¿Tenés comprobante de pago?
                         </label>
-                        <span className="text-[10px] text-slate-400">JPG, PNG o PDF</span>
-                      </div>
-
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/jpeg,image/png,application/pdf"
-                        onChange={handleFileChange}
-                        className="hidden"
-                        id="proof-upload"
-                      />
-
-                      {!selectedFile ? (
-                        <div className="space-y-2">
-                          <label
-                            htmlFor="proof-upload"
-                            className="border-2 border-dashed border-slate-700/80 hover:border-emerald-500/60 bg-[#0B0F17] rounded-xl p-4 flex flex-col items-center justify-center gap-1.5 cursor-pointer transition text-center"
-                          >
-                            <UploadCloud className="w-5 h-5 text-slate-400" />
-                            <span className="text-xs font-medium text-slate-200">
-                              Adjuntar foto o PDF del comprobante
-                            </span>
-                            <span className="text-[10px] text-slate-500">
-                              Haz clic para seleccionar el archivo
-                            </span>
-                          </label>
-
-                          <div className="flex items-center gap-2 pt-1">
-                            <input
-                              type="checkbox"
-                              id="no-proof"
-                              checked={noProofDeclared}
-                              onChange={(e) => setNoProofDeclared(e.target.checked)}
-                              className="rounded bg-[#0B0F17] border-slate-700 text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5 cursor-pointer"
-                            />
-                            <label htmlFor="no-proof" className="text-xs text-slate-400 cursor-pointer select-none">
-                              Ya realicé la transferencia pero no tengo el comprobante ahora
-                            </label>
-                          </div>
-                        </div>
-                      ) : (
-                        <div className="bg-[#0B0F17] rounded-xl border border-emerald-500/30 p-3 flex items-center justify-between">
-                          <div className="flex items-center gap-2.5 truncate pr-2">
-                            <FileText className="w-4 h-4 text-emerald-400 shrink-0" />
-                            <div className="truncate">
-                              <p className="text-xs font-medium text-white truncate">
-                                {selectedFile.name}
-                              </p>
-                              <p className="text-[10px] text-slate-400">
-                                {(selectedFile.size / 1024).toFixed(0)} KB · Adjuntado
-                              </p>
-                            </div>
-                          </div>
+                        <div className="inline-flex rounded-lg bg-[#111827] p-0.5 border border-slate-800">
                           <button
                             type="button"
-                            onClick={removeFile}
-                            className="p-1 rounded text-slate-400 hover:text-white transition cursor-pointer"
-                            title="Eliminar archivo"
+                            onClick={() => setHasProof("yes")}
+                            className={`px-3 py-1 rounded-md text-xs font-medium transition cursor-pointer ${
+                              hasProof === "yes"
+                                ? "bg-emerald-600 text-white shadow"
+                                : "text-slate-400 hover:text-slate-200"
+                            }`}
                           >
-                            <X className="w-4 h-4" />
+                            Sí
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setHasProof("no");
+                              setSelectedFile(null);
+                            }}
+                            className={`px-3 py-1 rounded-md text-xs font-medium transition cursor-pointer ${
+                              hasProof === "no"
+                                ? "bg-slate-700 text-white shadow"
+                                : "text-slate-400 hover:text-slate-200"
+                            }`}
+                          >
+                            No tengo ahora
                           </button>
                         </div>
-                      )}
+                      </div>
 
-                      {fileError && (
-                        <p className="text-[11px] text-rose-400 flex items-center gap-1">
-                          <AlertCircle className="w-3 h-3" /> {fileError}
-                        </p>
+                      {/* Dropzone solo si eligió "Sí" */}
+                      {hasProof === "yes" ? (
+                        <div className="space-y-2 pt-1 animate-fade-in">
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            accept="image/jpeg,image/png,application/pdf"
+                            onChange={handleFileChange}
+                            className="hidden"
+                            id="proof-upload"
+                          />
+
+                          {!selectedFile ? (
+                            <label
+                              htmlFor="proof-upload"
+                              className="border-2 border-dashed border-slate-700/80 hover:border-emerald-500/60 bg-[#111827] rounded-xl p-4 flex flex-col items-center justify-center gap-1.5 cursor-pointer transition text-center"
+                            >
+                              <UploadCloud className="w-5 h-5 text-slate-400" />
+                              <span className="text-xs font-medium text-slate-200">
+                                Adjuntar foto o PDF del comprobante
+                              </span>
+                              <span className="text-[10px] text-slate-500">
+                                JPG, PNG o PDF (máx. 5 MB)
+                              </span>
+                            </label>
+                          ) : (
+                            <div className="bg-[#111827] rounded-xl border border-emerald-500/30 p-3 flex items-center justify-between">
+                              <div className="flex items-center gap-2.5 truncate pr-2">
+                                <FileText className="w-4 h-4 text-emerald-400 shrink-0" />
+                                <div className="truncate">
+                                  <p className="text-xs font-medium text-white truncate">
+                                    {selectedFile.name}
+                                  </p>
+                                  <p className="text-[10px] text-slate-400">
+                                    {(selectedFile.size / 1024).toFixed(0)} KB · Adjuntado
+                                  </p>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={removeFile}
+                                className="p-1 rounded text-slate-400 hover:text-white transition cursor-pointer"
+                                title="Eliminar archivo"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          )}
+
+                          {fileError && (
+                            <p className="text-[11px] text-rose-400 flex items-center gap-1">
+                              <AlertCircle className="w-3 h-3" /> {fileError}
+                            </p>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="bg-[#111827] rounded-lg p-3 border border-slate-800/80 text-[11px] text-slate-400 leading-relaxed animate-fade-in">
+                          No te preocupes. Al enviar el formulario, el equipo de soporte cotejará tu transferencia bancaria con tus datos para liberar el acceso.
+                        </div>
                       )}
                     </div>
                   </div>
                 )}
 
-                {/* SI SELECCIONA YA PAGUE (EFECTIVO PRESENCIAL) */}
+                {/* SI SELECCIONA YA PAGUE */}
                 {method === "cash" && (
                   <div className="bg-[#0B0F17] rounded-xl border border-slate-800 p-4 space-y-2 animate-fade-in text-xs text-slate-300">
                     <p className="font-medium text-white">
-                      Pago presencial o previamente acordado
+                      Pago coordinado previamente
                     </p>
                     <p className="text-slate-400 leading-relaxed text-[11px]">
-                      Al enviar esta solicitud, tu registro quedará marcado como <strong className="text-slate-200">declaró pago en efectivo</strong>. Michael confirmará el cobro directamente en su panel administrativo para habilitar tu acceso al curso.
+                      Al enviar esta solicitud, tu registro quedará marcado como <strong className="text-slate-200">Pago coordinado</strong>. El equipo de soporte confirmará la recepción para habilitar tu acceso al curso.
                     </p>
                   </div>
                 )}
               </section>
 
-              {/* CUPON DE DESCUENTO (OPCIONAL) */}
+              {/* CUPON DE DESCUENTO */}
               <section className="bg-[#111827] border border-slate-800 rounded-xl p-4 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
@@ -746,7 +810,7 @@ ${method === "transfer" ? (selectedFile ? "Adjunto mi comprobante de transferenc
                 </div>
               )}
 
-              {/* BOTON DE ENVIO */}
+              {/* BOTON DE ENVIO PRIMARIO */}
               <div className="pt-1">
                 <button
                   type="submit"
@@ -756,29 +820,23 @@ ${method === "transfer" ? (selectedFile ? "Adjunto mi comprobante de transferenc
                   {sending ? (
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span>Registrando tu solicitud...</span>
+                      <span>Procesando solicitud...</span>
                     </div>
                   ) : (
                     <>
-                      <span>
-                        {method === "cash" || noProofDeclared
-                          ? "Registrar Pago y Solicitar Acceso"
-                          : selectedFile
-                          ? "Enviar Comprobante y Solicitar Acceso"
-                          : "Enviar Solicitud de Matrícula"}
-                      </span>
+                      <span>Confirmar y Liberar Acceso</span>
                       <ArrowRight className="w-4 h-4" />
                     </>
                   )}
                 </button>
                 <p className="text-[11px] text-slate-500 text-center mt-2">
-                  Al enviar, el administrador revisa tu solicitud y libera tu acceso directo al Campus.
+                  Al confirmar, el equipo de soporte validará tu registro para liberar tu acceso directo al Campus.
                 </p>
               </div>
             </form>
           </div>
 
-          {/* COLUMNA DERECHA: RESUMEN REAL DEL CURSO (5 COLUMNAS) */}
+          {/* COLUMNA DERECHA: RESUMEN DEL CURSO (5 COLUMNAS) */}
           <div className="lg:col-span-5 space-y-4 lg:sticky lg:top-20">
             <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xl space-y-4">
               <div>
@@ -795,7 +853,7 @@ ${method === "transfer" ? (selectedFile ? "Adjunto mi comprobante de transferenc
                 )}
               </div>
 
-              {/* DESGLOSE REAL */}
+              {/* DESGLOSE */}
               <div className="pt-3 border-t border-slate-800 space-y-2 text-xs">
                 <div className="flex justify-between items-center text-slate-300">
                   <span>Precio del curso:</span>
@@ -822,8 +880,8 @@ ${method === "transfer" ? (selectedFile ? "Adjunto mi comprobante de transferenc
                 <p className="font-semibold text-slate-300">¿Cómo funciona?</p>
                 <ol className="list-decimal list-inside space-y-1 text-slate-400">
                   <li>Completas el formulario con tus datos.</li>
-                  <li>Michael verifica el pago en su panel de administración.</li>
-                  <li>Recibes tu enlace Magic Link para ingresar al Campus sin contraseña.</li>
+                  <li>El equipo de soporte verifica el pago en el panel de control.</li>
+                  <li>Recibes tu enlace directo para ingresar al Campus sin contraseña.</li>
                 </ol>
               </div>
 
@@ -832,14 +890,14 @@ ${method === "transfer" ? (selectedFile ? "Adjunto mi comprobante de transferenc
                 <span className="text-slate-400 text-[11px]">¿Tienes dudas?</span>
                 <a
                   href={`https://wa.me/595981000000?text=${encodeURIComponent(
-                    `Hola Michael, tengo una consulta sobre el curso "${course.name}".`
+                    `Hola Equipo de Soporte, tengo una consulta sobre el curso "${course.name}".`
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1 cursor-pointer"
                 >
                   <Phone className="w-3 h-3" />
-                  Escribir a Michael
+                  Contactar a Soporte
                 </a>
               </div>
             </div>
