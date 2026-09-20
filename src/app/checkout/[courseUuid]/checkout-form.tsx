@@ -2,23 +2,18 @@
 
 import React, { FormEvent, useState, useRef } from "react";
 import {
-  ShieldCheck,
-  Lock,
   CheckCircle2,
   Copy,
   Check,
   UploadCloud,
   FileText,
   Sparkles,
-  Star,
   ArrowRight,
-  CreditCard,
   Building2,
   Banknote,
   Phone,
   Mail,
   User,
-  Award,
   GraduationCap,
   AlertCircle,
   X,
@@ -44,9 +39,10 @@ export default function CheckoutForm({
   const [email, setEmail] = useState("");
   const [confirmEmail, setConfirmEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [method, setMethod] = useState<"transfer" | "card" | "cash">("transfer");
+  const [method, setMethod] = useState<"transfer" | "cash">("transfer");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [noProofDeclared, setNoProofDeclared] = useState(false);
   const [sending, setSending] = useState(false);
   const [reference, setReference] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -54,7 +50,7 @@ export default function CheckoutForm({
   const [copiedRef, setCopiedRef] = useState(false);
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
 
-  // Coupon state
+  // Cupón de descuento
   const [couponCode, setCouponCode] = useState("");
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState<string | null>(null);
@@ -68,8 +64,6 @@ export default function CheckoutForm({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const finalPrice = coupon ? coupon.amountDue : course.price_pyg;
-  const regularPrice = Math.round(course.price_pyg * 1.35);
-  const usdReference = Math.max(1, Math.round(finalPrice / 7500));
 
   const copyToClipboard = async (text: string, fieldId: string) => {
     try {
@@ -88,7 +82,7 @@ export default function CheckoutForm({
 
     const allowedTypes = ["image/jpeg", "image/png", "application/pdf"];
     if (!allowedTypes.includes(file.type)) {
-      setFileError("El formato debe ser JPG, PNG o PDF.");
+      setFileError("El comprobante debe ser formato JPG, PNG o PDF.");
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
@@ -97,6 +91,7 @@ export default function CheckoutForm({
     }
 
     setSelectedFile(file);
+    setNoProofDeclared(false);
   };
 
   const removeFile = () => {
@@ -123,7 +118,7 @@ export default function CheckoutForm({
       const data = await response.json();
       if (!response.ok) {
         setCoupon(null);
-        setCouponError(data.error || "Cupón inválido o expirado.");
+        setCouponError(data.error || "Cupón no válido.");
         return;
       }
       setCoupon({
@@ -143,7 +138,7 @@ export default function CheckoutForm({
     event.preventDefault();
 
     if (email.trim().toLowerCase() !== confirmEmail.trim().toLowerCase()) {
-      setError("Los correos electrónicos ingresados no coinciden. Por favor verifícalos.");
+      setError("Los correos electrónicos no coinciden. Verifícalos antes de continuar.");
       return;
     }
 
@@ -157,11 +152,12 @@ export default function CheckoutForm({
       formData.set("name", name.trim());
       formData.set("email", email.trim().toLowerCase());
       formData.set("phone", phone.trim());
-      formData.set("payment_method", method === "cash" ? "cash" : "transfer");
+      formData.set("payment_method", method);
+
       if (coupon) {
         formData.set("coupon_code", coupon.code);
       }
-      if (selectedFile) {
+      if (selectedFile && method === "transfer") {
         formData.set("payment_proof", selectedFile);
       }
 
@@ -171,53 +167,43 @@ export default function CheckoutForm({
       });
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || "No se pudo registrar tu solicitud.");
+        throw new Error(data.error || "No se pudo registrar la solicitud.");
       }
       setReference(data.reference);
     } catch (cause: unknown) {
-      setError(cause instanceof Error ? cause.message : "No se pudo registrar tu solicitud.");
+      setError(cause instanceof Error ? cause.message : "No se pudo registrar la solicitud.");
     } finally {
       setSending(false);
     }
   }
 
-  // PANTALLA DE AGRADECIMIENTO / CONFIRMACION (ESTILO HOTMART)
+  // PANTALLA DE CONFIRMACION / SOLICITUD ENVIADA
   if (reference) {
-    const whatsappProofMessage = `¡Hola! Acabo de registrar mi inscripción al curso "${course.name}".
-Mi código de referencia es: #${reference}
-Titular: ${name}
+    const whatsappNotification = `Hola Michael, acabo de registrar mi pago para el curso "${course.name}".
+Referencia: #${reference}
+Alumno: ${name}
 Correo: ${email}
-Adjunto mi comprobante para activar mi acceso al Campus.`;
+${method === "transfer" ? (selectedFile ? "Adjunto mi comprobante de transferencia." : "Realicé la transferencia.") : "El pago fue realizado en efectivo / coordinado previamente."}`;
 
     return (
-      <main className="min-h-screen bg-slate-950 text-white py-12 px-4 sm:px-6 flex flex-col items-center justify-center">
-        <div className="max-w-xl w-full bg-slate-900 border border-emerald-500/40 rounded-3xl p-6 sm:p-10 shadow-2xl space-y-8 animate-fade-in">
-          {/* Header de Éxito */}
-          <div className="text-center space-y-3">
-            <div className="w-16 h-16 bg-emerald-500/20 text-emerald-400 rounded-full flex items-center justify-center mx-auto border border-emerald-500/40 shadow-lg shadow-emerald-500/20">
-              <CheckCircle2 className="w-10 h-10" />
+      <main className="min-h-screen bg-[#0B0F17] text-slate-100 py-12 px-4 sm:px-6 flex flex-col items-center justify-center">
+        <div className="max-w-lg w-full bg-[#111827] border border-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6">
+          <div className="text-center space-y-2">
+            <div className="w-14 h-14 bg-emerald-500/10 text-emerald-400 rounded-full flex items-center justify-center mx-auto border border-emerald-500/20">
+              <CheckCircle2 className="w-8 h-8" />
             </div>
-            <span className="inline-block px-3 py-1 rounded-full text-xs font-bold tracking-wider uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              ¡Inscripción Registrada!
-            </span>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
-              Tu solicitud está en proceso
+            <h1 className="text-xl sm:text-2xl font-bold text-white">
+              Solicitud de Matrícula Registrada
             </h1>
-            <p className="text-slate-400 text-sm max-w-md mx-auto">
-              Hemos reservado tu lugar en <span className="text-white font-semibold">{course.name}</span>.
+            <p className="text-xs sm:text-sm text-slate-400">
+              Tu solicitud para <strong className="text-slate-200">{course.name}</strong> ha sido enviada al administrador.
             </p>
           </div>
 
-          {/* Tarjeta de Referencia */}
-          <div className="bg-slate-950 rounded-2xl p-5 border border-slate-800 space-y-3">
+          {/* Código de Referencia */}
+          <div className="bg-[#0B0F17] rounded-xl p-4 border border-slate-800 space-y-2">
             <div className="flex items-center justify-between text-xs text-slate-400">
               <span>Código de Referencia:</span>
-              <span className="text-emerald-400 font-semibold">Guardar este código</span>
-            </div>
-            <div className="flex items-center justify-between bg-slate-900 px-4 py-3 rounded-xl border border-slate-800">
-              <span className="font-mono text-lg font-bold text-white tracking-wider">
-                #{reference}
-              </span>
               <button
                 type="button"
                 onClick={async () => {
@@ -225,80 +211,57 @@ Adjunto mi comprobante para activar mi acceso al Campus.`;
                   setCopiedRef(true);
                   setTimeout(() => setCopiedRef(false), 2000);
                 }}
-                className="flex items-center gap-1.5 text-xs text-sky-400 hover:text-sky-300 font-semibold px-2.5 py-1 rounded-lg bg-sky-950/60 border border-sky-800/60 cursor-pointer"
+                className="flex items-center gap-1 text-emerald-400 hover:text-emerald-300 font-semibold cursor-pointer"
               >
-                {copiedRef ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                {copiedRef ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                 {copiedRef ? "Copiado" : "Copiar"}
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-slate-800/80">
+            <div className="font-mono text-base sm:text-lg font-bold text-white tracking-wider">
+              #{reference}
+            </div>
+            <div className="pt-2 border-t border-slate-800/80 grid grid-cols-2 gap-2 text-xs">
               <div>
-                <span className="text-slate-500 block">Alumno:</span>
-                <span className="text-slate-200 font-medium truncate block">{name}</span>
+                <span className="text-slate-500 block text-[11px]">Alumno:</span>
+                <span className="text-slate-300 font-medium truncate block">{name}</span>
               </div>
               <div className="text-right">
-                <span className="text-slate-500 block">Total a Confirmar:</span>
-                <span className="text-emerald-400 font-bold">{finalPrice.toLocaleString("es-PY")} PYG</span>
+                <span className="text-slate-500 block text-[11px]">Estado:</span>
+                <span className="text-amber-400 font-medium">Pendiente de liberación</span>
               </div>
             </div>
           </div>
 
-          {/* Próximos Pasos (Inspirado en Hotmart) */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-emerald-400" />
-              ¿Qué sucederá ahora?
-            </h3>
-            <ol className="space-y-3 text-xs text-slate-300">
-              <li className="flex items-start gap-3 bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
-                <span className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
-                  1
-                </span>
-                <div>
-                  <strong className="text-white block">Revisión del Pago</strong>
-                  Verificamos tu transferencia y comprobante. Suele demorar solo unos minutos en horario hábil.
-                </div>
-              </li>
-              <li className="flex items-start gap-3 bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
-                <span className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
-                  2
-                </span>
-                <div>
-                  <strong className="text-white block">Envío de tu Acceso Inmediato</strong>
-                  Recibirás en <span className="text-sky-400 font-mono">{email}</span> tu Magic Link para ingresar al Campus Virtual sin contraseña.
-                </div>
-              </li>
-              <li className="flex items-start gap-3 bg-slate-950/60 p-3 rounded-xl border border-slate-800/80">
-                <span className="w-6 h-6 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs shrink-0 mt-0.5">
-                  3
-                </span>
-                <div>
-                  <strong className="text-white block">¡Empiezas a estudiar!</strong>
-                  Acceso 100% vitalicio e ilimitado a todas las lecciones y recursos del programa.
-                </div>
-              </li>
-            </ol>
+          {/* Cómo se activa */}
+          <div className="space-y-2 text-xs text-slate-300 bg-[#0B0F17]/50 p-4 rounded-xl border border-slate-800/60">
+            <h3 className="font-semibold text-slate-200">Próximos pasos:</h3>
+            <p>
+              1. Michael revisará tu solicitud en el panel de control.
+            </p>
+            <p>
+              2. Al confirmarla, se creará tu usuario en <code className="text-sky-400">campus.michaelsahlmann.com</code> y recibirás el enlace de acceso directo a tu correo (<span className="text-slate-200 font-mono">{email}</span>) y WhatsApp.
+            </p>
           </div>
 
-          {/* Botón de WhatsApp para acelerar activación */}
-          <div className="pt-2 space-y-3">
+          {/* Botón de aviso por WhatsApp */}
+          <div className="pt-2 space-y-2.5">
             <a
-              href={`https://wa.me/595981000000?text=${encodeURIComponent(whatsappProofMessage)}`}
+              href={`https://wa.me/595981000000?text=${encodeURIComponent(whatsappNotification)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/25 transition cursor-pointer"
+              className="w-full py-3 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-600/20 cursor-pointer"
             >
               <Phone className="w-4 h-4" />
-              Acelerar Activación por WhatsApp &rarr;
+              Avisar a Michael por WhatsApp
             </a>
 
             <a
               href="https://campus.michaelsahlmann.com"
               target="_blank"
               rel="noopener noreferrer"
-              className="block text-center text-xs text-slate-400 hover:text-slate-200 transition py-2"
+              className="block text-center text-xs text-slate-400 hover:text-slate-200 transition py-1"
             >
-              Ir a la portada del Campus Virtual &rarr;
+              Ir al Campus Virtual &rarr;
             </a>
           </div>
         </div>
@@ -307,166 +270,139 @@ Adjunto mi comprobante para activar mi acceso al Campus.`;
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 text-white antialiased">
-      {/* HEADER SUPERIOR DE SEGURIDAD (ESTILO HOTMART) */}
-      <header className="border-b border-slate-800/80 bg-slate-900/60 backdrop-blur-md sticky top-0 z-30">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+    <div className="min-h-screen bg-[#0B0F17] text-slate-100 antialiased selection:bg-emerald-500/30 selection:text-white">
+      {/* BARRA SUPERIOR SOBRIA */}
+      <header className="border-b border-slate-800/80 bg-[#111827]/80 backdrop-blur-md sticky top-0 z-30">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
-              <GraduationCap className="w-5 h-5" />
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+              <GraduationCap className="w-4 h-4" />
             </div>
             <div>
-              <span className="font-bold text-sm tracking-tight text-white block">
+              <span className="font-semibold text-sm text-white tracking-tight block leading-tight">
                 Campus Michael Sahlmann
               </span>
-              <span className="text-[10px] text-emerald-400 font-semibold uppercase tracking-wider block">
-                Checkout Seguro Oficial
+              <span className="text-[10px] text-slate-400 block leading-tight">
+                Registro de Matrícula
               </span>
             </div>
           </div>
 
-          <div className="flex items-center gap-4 text-xs text-slate-400">
-            <div className="hidden sm:flex items-center gap-1.5 text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
-              <span className="font-semibold text-[11px]">Ambiente Seguro</span>
-            </div>
-            <div className="flex items-center gap-1.5 text-slate-300">
-              <Lock className="w-3.5 h-3.5 text-slate-400" />
-              <span className="text-[11px]">Cifrado SSL 256-bit</span>
-            </div>
-          </div>
+          <a
+            href="https://campus.michaelsahlmann.com"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-slate-400 hover:text-white transition flex items-center gap-1"
+          >
+            campus.michaelsahlmann.com
+          </a>
         </div>
       </header>
 
-      {/* BANNER DE GARANTIA Y ACCESO */}
-      <div className="bg-gradient-to-r from-emerald-950/50 via-slate-900 to-slate-950 border-b border-slate-800/60 py-2.5 px-4 text-center">
-        <div className="max-w-6xl mx-auto flex items-center justify-center gap-6 text-xs text-slate-300 overflow-x-auto whitespace-nowrap py-0.5">
-          <span className="inline-flex items-center gap-1.5 text-emerald-400 font-medium">
-            <Award className="w-3.5 h-3.5" />
-            Garantía Incondicional de Satisfacción
-          </span>
-          <span className="text-slate-600">·</span>
-          <span className="inline-flex items-center gap-1.5 text-sky-400 font-medium">
-            <Sparkles className="w-3.5 h-3.5" />
-            Acceso Inmediato al Campus Virtual
-          </span>
-          <span className="text-slate-600">·</span>
-          <span className="inline-flex items-center gap-1.5 text-slate-300 font-medium">
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-            Certificado Oficial Incluido
-          </span>
-        </div>
-      </div>
-
-      {/* MOBILE ORDER SUMMARY TOGGLE */}
-      <div className="lg:hidden border-b border-slate-800 bg-slate-900/90 px-4 py-3">
+      {/* RESUMEN MOVIL COLAPSABLE */}
+      <div className="lg:hidden border-b border-slate-800 bg-[#111827] px-4 py-3">
         <button
           type="button"
           onClick={() => setMobileSummaryOpen(!mobileSummaryOpen)}
           className="w-full flex items-center justify-between text-xs font-semibold text-slate-200 cursor-pointer"
         >
-          <span className="flex items-center gap-2">
-            <GraduationCap className="w-4 h-4 text-emerald-400" />
-            <span>Ver resumen de compra ({course.name.slice(0, 24)}...)</span>
-            {mobileSummaryOpen ? <ChevronUp className="w-4 h-4 text-slate-400" /> : <ChevronDown className="w-4 h-4 text-slate-400" />}
+          <span className="flex items-center gap-2 truncate pr-2">
+            <span className="text-slate-400">Curso:</span>
+            <span className="text-white truncate font-medium">{course.name}</span>
+            {mobileSummaryOpen ? <ChevronUp className="w-3.5 h-3.5 text-slate-400 shrink-0" /> : <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />}
           </span>
-          <span className="text-sm font-bold text-emerald-400">
+          <span className="text-sm font-bold text-emerald-400 font-mono shrink-0">
             {finalPrice.toLocaleString("es-PY")} PYG
           </span>
         </button>
 
         {mobileSummaryOpen && (
           <div className="mt-3 pt-3 border-t border-slate-800 text-xs space-y-2 animate-fade-in">
-            <p className="text-white font-bold">{course.name}</p>
-            {course.description && <p className="text-slate-400 text-[11px]">{course.description}</p>}
-            <div className="flex justify-between text-slate-400 pt-1">
-              <span>Precio normal:</span>
-              <span className="line-through">{regularPrice.toLocaleString("es-PY")} PYG</span>
-            </div>
+            {course.description && <p className="text-slate-400 text-xs">{course.description}</p>}
             {coupon && (
               <div className="flex justify-between text-emerald-400 font-medium">
                 <span>Cupón ({coupon.name}):</span>
                 <span>-{coupon.discount.toLocaleString("es-PY")} PYG</span>
               </div>
             )}
-            <div className="flex justify-between text-white font-bold text-sm pt-2 border-t border-slate-800">
-              <span>Total:</span>
+            <div className="flex justify-between text-white font-bold text-xs pt-1 border-t border-slate-800/60">
+              <span>Total a Pagar:</span>
               <span className="text-emerald-400">{finalPrice.toLocaleString("es-PY")} PYG</span>
             </div>
           </div>
         )}
       </div>
 
-      {/* CUERPO PRINCIPAL DEL CHECKOUT: 2 COLUMNAS RESPONSIVAS */}
-      <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 lg:py-12">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-10 items-start">
-          {/* COLUMNA IZQUIERDA: FORMULARIO Y PASOS (7 COLUMNAS) */}
+      {/* CONTENIDO PRINCIPAL EN 2 COLUMNAS */}
+      <main className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          {/* COLUMNA IZQUIERDA: FORMULARIO DIRECTO (7 COLUMNAS) */}
           <div className="lg:col-span-7 space-y-6">
             <form onSubmit={submit} className="space-y-6">
-              {/* PASO 1: DATOS PERSONALES */}
-              <section className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl space-y-5">
-                <div className="flex items-center gap-3 pb-4 border-b border-slate-800">
-                  <span className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 font-black text-sm flex items-center justify-center border border-emerald-500/30">
+              {/* PASO 1: DATOS DEL ALUMNO */}
+              <section className="bg-[#111827] border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xl space-y-4">
+                <div className="flex items-center gap-2.5 pb-3 border-b border-slate-800">
+                  <span className="w-6 h-6 rounded-full bg-emerald-500/10 text-emerald-400 font-bold text-xs flex items-center justify-center border border-emerald-500/20">
                     1
                   </span>
                   <div>
-                    <h2 className="text-base sm:text-lg font-bold text-white">
-                      Tus Datos Personales
+                    <h2 className="text-sm sm:text-base font-bold text-white">
+                      Datos del Alumno
                     </h2>
                     <p className="text-xs text-slate-400">
-                      Ingresa los datos del alumno que cursará el programa
+                      Datos de la persona que cursará el programa
                     </p>
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  {/* Nombre Completo */}
+                <div className="space-y-3.5">
+                  {/* Nombre y Apellido */}
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
-                      Nombre y Apellido Completo <span className="text-rose-400">*</span>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Nombre y Apellido <span className="text-rose-400">*</span>
                     </label>
                     <div className="relative">
-                      <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+                      <User className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
                       <input
                         type="text"
                         required
                         placeholder="Ej. Carlos Benítez"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-700/80 rounded-xl pl-10 pr-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 text-sm transition"
+                        className="w-full bg-[#0B0F17] border border-slate-700/80 rounded-xl pl-9 pr-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 text-xs sm:text-sm transition"
                       />
                     </div>
                   </div>
 
-                  {/* Correo Electrónico Principal */}
+                  {/* Correo Electrónico */}
                   <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-xs font-semibold text-slate-300">
                         Correo Electrónico <span className="text-rose-400">*</span>
                       </label>
-                      <span className="text-[10px] text-slate-400">Donde recibirás el acceso</span>
+                      <span className="text-[10px] text-slate-400">Login para el Campus</span>
                     </div>
                     <div className="relative">
-                      <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-3.5" />
+                      <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
                       <input
                         type="email"
                         required
                         placeholder="tu-correo@ejemplo.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-700/80 rounded-xl pl-10 pr-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 text-sm font-medium transition"
+                        className="w-full bg-[#0B0F17] border border-slate-700/80 rounded-xl pl-9 pr-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 text-xs sm:text-sm transition"
                       />
                     </div>
                   </div>
 
-                  {/* Confirmar Correo Electrónico (Clásico de Hotmart para evitar errores) */}
+                  {/* Confirmar Correo */}
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1.5">
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
                       Confirmar Correo Electrónico <span className="text-rose-400">*</span>
                     </label>
                     <div className="relative">
                       <CheckCircle2
-                        className={`w-4 h-4 absolute left-3.5 top-3.5 ${
+                        className={`w-4 h-4 absolute left-3 top-3 ${
                           confirmEmail && confirmEmail.toLowerCase() === email.toLowerCase()
                             ? "text-emerald-400"
                             : "text-slate-500"
@@ -475,10 +411,10 @@ Adjunto mi comprobante para activar mi acceso al Campus.`;
                       <input
                         type="email"
                         required
-                        placeholder="Repite tu correo electrónico"
+                        placeholder="Repite tu correo para verificar"
                         value={confirmEmail}
                         onChange={(e) => setConfirmEmail(e.target.value)}
-                        className={`w-full bg-slate-950 border rounded-xl pl-10 pr-4 py-3 text-white placeholder-slate-500 focus:outline-none text-sm font-medium transition ${
+                        className={`w-full bg-[#0B0F17] border rounded-xl pl-9 pr-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-none text-xs sm:text-sm transition ${
                           confirmEmail && confirmEmail.toLowerCase() !== email.toLowerCase()
                             ? "border-rose-500/80 focus:border-rose-500"
                             : "border-slate-700/80 focus:border-emerald-500"
@@ -492,230 +428,184 @@ Adjunto mi comprobante para activar mi acceso al Campus.`;
                     )}
                   </div>
 
-                  {/* WhatsApp */}
+                  {/* Teléfono / WhatsApp */}
                   <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-                        Número de Teléfono / WhatsApp
-                      </label>
-                      <span className="text-[10px] text-slate-400">Recomendado para soporte</span>
-                    </div>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                      Número de WhatsApp / Teléfono <span className="text-slate-400 font-normal">(opcional)</span>
+                    </label>
                     <div className="relative flex items-center">
-                      <div className="absolute left-3 flex items-center gap-1.5 text-xs font-semibold text-slate-400 pointer-events-none">
+                      <div className="absolute left-3 flex items-center gap-1 text-xs text-slate-400 pointer-events-none">
                         <span>🇵🇾</span>
-                        <span>+595</span>
+                        <span className="font-mono">+595</span>
                       </div>
                       <input
                         type="tel"
                         placeholder="981 123 456"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
-                        className="w-full bg-slate-950 border border-slate-700/80 rounded-xl pl-20 pr-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 text-sm transition"
+                        className="w-full bg-[#0B0F17] border border-slate-700/80 rounded-xl pl-20 pr-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 text-xs sm:text-sm transition"
                       />
                     </div>
-                    <p className="text-[11px] text-slate-500 mt-1">
-                      Te enviaremos también por WhatsApp tu enlace de ingreso directo sin contraseña.
-                    </p>
+                    <span className="text-[10px] text-slate-400 mt-1 block">
+                      Para enviarte el enlace de acceso directo por WhatsApp.
+                    </span>
                   </div>
                 </div>
               </section>
 
-              {/* PASO 2: FORMA DE PAGO */}
-              <section className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 shadow-xl space-y-6">
-                <div className="flex items-center gap-3 pb-4 border-b border-slate-800">
-                  <span className="w-8 h-8 rounded-full bg-emerald-500/20 text-emerald-400 font-black text-sm flex items-center justify-center border border-emerald-500/30">
+              {/* PASO 2: FORMA DE PAGO REAL */}
+              <section className="bg-[#111827] border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xl space-y-4">
+                <div className="flex items-center gap-2.5 pb-3 border-b border-slate-800">
+                  <span className="w-6 h-6 rounded-full bg-emerald-500/10 text-emerald-400 font-bold text-xs flex items-center justify-center border border-emerald-500/20">
                     2
                   </span>
                   <div>
-                    <h2 className="text-base sm:text-lg font-bold text-white">
+                    <h2 className="text-sm sm:text-base font-bold text-white">
                       Forma de Pago
                     </h2>
                     <p className="text-xs text-slate-400">
-                      Selecciona la opción más conveniente para ti
+                      Selecciona cómo realizaste o realizarás el pago
                     </p>
                   </div>
                 </div>
 
-                {/* SELECTOR DE METODOS (TABS MODERNOS) */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {/* Opción 1: Transferencia SIPAP */}
+                {/* SELECTOR DE 2 OPCIONES REALES */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Opción 1: Transferencia Bancaria */}
                   <button
                     type="button"
-                    onClick={() => setMethod("transfer")}
-                    className={`p-4 rounded-2xl border text-left transition flex flex-col justify-between cursor-pointer ${
+                    onClick={() => {
+                      setMethod("transfer");
+                    }}
+                    className={`p-3.5 rounded-xl border text-left transition flex items-start gap-3 cursor-pointer ${
                       method === "transfer"
-                        ? "bg-emerald-950/40 border-emerald-500/80 shadow-lg shadow-emerald-500/10"
-                        : "bg-slate-950 border-slate-800 hover:border-slate-700"
+                        ? "bg-emerald-950/20 border-emerald-500/60 ring-1 ring-emerald-500/30"
+                        : "bg-[#0B0F17] border-slate-800 hover:border-slate-700"
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-3">
-                      <Building2
-                        className={`w-5 h-5 ${
-                          method === "transfer" ? "text-emerald-400" : "text-slate-400"
-                        }`}
-                      />
-                      <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">
-                        Recomendado
-                      </span>
+                    <div className={`p-2 rounded-lg mt-0.5 ${method === "transfer" ? "bg-emerald-500/20 text-emerald-400" : "bg-slate-800 text-slate-400"}`}>
+                      <Building2 className="w-4 h-4" />
                     </div>
                     <div>
-                      <h4 className="font-bold text-xs text-white">Transferencia SIPAP</h4>
-                      <p className="text-[11px] text-slate-400 mt-0.5">Bancos de Paraguay / QR</p>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-semibold text-xs sm:text-sm text-white">Transferencia SIPAP</span>
+                      </div>
+                      <span className="text-[11px] text-slate-400 block mt-0.5">
+                        Transferir y/o subir comprobante
+                      </span>
                     </div>
                   </button>
 
-                  {/* Opción 2: Tarjeta */}
+                  {/* Opción 2: Ya pagué (Efectivo presencial o coordinado) */}
                   <button
                     type="button"
-                    onClick={() => setMethod("card")}
-                    className={`p-4 rounded-2xl border text-left transition flex flex-col justify-between cursor-pointer ${
-                      method === "card"
-                        ? "bg-sky-950/40 border-sky-500/80 shadow-lg shadow-sky-500/10"
-                        : "bg-slate-950 border-slate-800 hover:border-slate-700"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <CreditCard
-                        className={`w-5 h-5 ${
-                          method === "card" ? "text-sky-400" : "text-slate-400"
-                        }`}
-                      />
-                      <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-400">
-                        Online
-                      </span>
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-xs text-white">Tarjeta de Débito/Crédito</h4>
-                      <p className="text-[11px] text-slate-400 mt-0.5">Visa / Mastercard / Stripe</p>
-                    </div>
-                  </button>
-
-                  {/* Opción 3: Efectivo */}
-                  <button
-                    type="button"
-                    onClick={() => setMethod("cash")}
-                    className={`p-4 rounded-2xl border text-left transition flex flex-col justify-between cursor-pointer ${
+                    onClick={() => {
+                      setMethod("cash");
+                      setSelectedFile(null);
+                    }}
+                    className={`p-3.5 rounded-xl border text-left transition flex items-start gap-3 cursor-pointer ${
                       method === "cash"
-                        ? "bg-amber-950/40 border-amber-500/80 shadow-lg shadow-amber-500/10"
-                        : "bg-slate-950 border-slate-800 hover:border-slate-700"
+                        ? "bg-emerald-950/20 border-emerald-500/60 ring-1 ring-emerald-500/30"
+                        : "bg-[#0B0F17] border-slate-800 hover:border-slate-700"
                     }`}
                   >
-                    <div className="flex items-center justify-between mb-3">
-                      <Banknote
-                        className={`w-5 h-5 ${
-                          method === "cash" ? "text-amber-400" : "text-slate-400"
-                        }`}
-                      />
+                    <div className={`p-2 rounded-lg mt-0.5 ${method === "cash" ? "bg-emerald-500/20 text-emerald-400" : "bg-slate-800 text-slate-400"}`}>
+                      <Banknote className="w-4 h-4" />
                     </div>
                     <div>
-                      <h4 className="font-bold text-xs text-white">Efectivo / Cobranzas</h4>
-                      <p className="text-[11px] text-slate-400 mt-0.5">Pago Express / Giros</p>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-semibold text-xs sm:text-sm text-white">Ya pagué</span>
+                      </div>
+                      <span className="text-[11px] text-slate-400 block mt-0.5">
+                        Efectivo presencial o coordinado
+                      </span>
                     </div>
                   </button>
                 </div>
 
-                {/* DETALLE SEGUN METODO SELECCIONADO */}
+                {/* SI SELECCIONA TRANSFERENCIA BANCARIA */}
                 {method === "transfer" && (
-                  <div className="space-y-4 pt-2">
-                    {/* Tarjeta VIP de Datos Bancarios con Copiado en 1 clic */}
-                    <div className="bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 rounded-2xl border border-emerald-500/30 p-5 shadow-inner space-y-4">
-                      <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                        <div className="flex items-center gap-2">
-                          <Building2 className="w-4 h-4 text-emerald-400" />
-                          <span className="font-bold text-xs uppercase tracking-wider text-emerald-400">
-                            Datos para Transferencia Bancaria (SIPAP)
-                          </span>
-                        </div>
-                        <span className="text-[11px] text-slate-400 font-mono">
-                          Monto: <strong className="text-white">{finalPrice.toLocaleString("es-PY")} PYG</strong>
+                  <div className="space-y-4 pt-1 animate-fade-in">
+                    {/* Tarjeta de Datos Bancarios de Michael */}
+                    <div className="bg-[#0B0F17] rounded-xl border border-slate-800 p-4 space-y-3">
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-800/80">
+                        <span className="text-xs font-semibold text-emerald-400 flex items-center gap-1.5">
+                          <Building2 className="w-3.5 h-3.5" />
+                          Datos para Transferir (SIPAP)
+                        </span>
+                        <span className="text-xs font-mono font-bold text-white">
+                          {finalPrice.toLocaleString("es-PY")} PYG
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                        {/* Banco */}
-                        <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
-                          <span className="text-slate-400 text-[11px] block">Banco:</span>
-                          <span className="font-bold text-white">Banco Itaú / SIPAP</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                        <div className="bg-[#111827] p-2.5 rounded-lg border border-slate-800/60">
+                          <span className="text-[10px] text-slate-500 block">Banco:</span>
+                          <span className="font-semibold text-slate-200">Banco Itaú / SIPAP</span>
                         </div>
 
-                        {/* Titular */}
-                        <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800">
-                          <span className="text-slate-400 text-[11px] block">Titular:</span>
-                          <span className="font-bold text-white">Michael Sahlmann</span>
+                        <div className="bg-[#111827] p-2.5 rounded-lg border border-slate-800/60">
+                          <span className="text-[10px] text-slate-500 block">Titular:</span>
+                          <span className="font-semibold text-slate-200">Michael Sahlmann</span>
                         </div>
 
                         {/* N° de Cuenta con Copiado */}
-                        <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 flex items-center justify-between">
+                        <div className="bg-[#111827] p-2.5 rounded-lg border border-slate-800/60 flex items-center justify-between">
                           <div>
-                            <span className="text-slate-400 text-[11px] block">N° de Cuenta (Caja de Ahorro):</span>
+                            <span className="text-[10px] text-slate-500 block">N° de Cuenta (Caja de Ahorro):</span>
                             <span className="font-mono font-bold text-white">720000000</span>
                           </div>
                           <button
                             type="button"
                             onClick={() => copyToClipboard("720000000", "acc")}
-                            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer"
-                            title="Copiar N° de Cuenta"
+                            className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer"
+                            title="Copiar N° de cuenta"
                           >
-                            {copiedBankField === "acc" ? (
-                              <Check className="w-3.5 h-3.5 text-emerald-400" />
-                            ) : (
-                              <Copy className="w-3.5 h-3.5" />
-                            )}
+                            {copiedBankField === "acc" ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
                           </button>
                         </div>
 
                         {/* CI / RUC con Copiado */}
-                        <div className="bg-slate-900/80 p-3 rounded-xl border border-slate-800 flex items-center justify-between">
+                        <div className="bg-[#111827] p-2.5 rounded-lg border border-slate-800/60 flex items-center justify-between">
                           <div>
-                            <span className="text-slate-400 text-[11px] block">CI / RUC:</span>
+                            <span className="text-[10px] text-slate-500 block">CI / RUC:</span>
                             <span className="font-mono font-bold text-white">4567890-1</span>
                           </div>
                           <button
                             type="button"
                             onClick={() => copyToClipboard("4567890-1", "ruc")}
-                            className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition cursor-pointer"
+                            className="p-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer"
                             title="Copiar RUC"
                           >
-                            {copiedBankField === "ruc" ? (
-                              <Check className="w-3.5 h-3.5 text-emerald-400" />
-                            ) : (
-                              <Copy className="w-3.5 h-3.5" />
-                            )}
+                            {copiedBankField === "ruc" ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
                           </button>
                         </div>
                       </div>
 
                       {/* Alias SIPAP */}
-                      <div className="bg-slate-900/90 p-3 rounded-xl border border-emerald-500/20 flex items-center justify-between">
-                        <div className="text-xs">
-                          <span className="text-slate-400 text-[11px] block">Alias SIPAP / Email de Transferencia:</span>
-                          <span className="font-mono font-bold text-emerald-400">pagos@michaelsahlmann.com</span>
+                      <div className="bg-[#111827] p-2.5 rounded-lg border border-slate-800/60 flex items-center justify-between text-xs">
+                        <div>
+                          <span className="text-[10px] text-slate-500 block">Alias SIPAP / Email de Transferencia:</span>
+                          <span className="font-mono text-emerald-400 font-semibold">pagos@michaelsahlmann.com</span>
                         </div>
                         <button
                           type="button"
                           onClick={() => copyToClipboard("pagos@michaelsahlmann.com", "alias")}
-                          className="flex items-center gap-1 text-[11px] font-semibold text-emerald-400 hover:text-emerald-300 px-2 py-1 rounded bg-emerald-500/10 border border-emerald-500/30 cursor-pointer"
+                          className="flex items-center gap-1 text-[11px] font-medium text-emerald-400 hover:text-emerald-300 px-2 py-1 rounded bg-emerald-500/10 cursor-pointer"
                         >
-                          {copiedBankField === "alias" ? (
-                            <>
-                              <Check className="w-3 h-3" /> Copiado
-                            </>
-                          ) : (
-                            <>
-                              <Copy className="w-3 h-3" /> Copiar Alias
-                            </>
-                          )}
+                          {copiedBankField === "alias" ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                          {copiedBankField === "alias" ? "Copiado" : "Copiar"}
                         </button>
                       </div>
                     </div>
 
-                    {/* DROPZONE DE COMPROBANTE DE PAGO */}
-                    <div>
-                      <div className="flex items-center justify-between mb-2">
-                        <label className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-                          Comprobante de Pago
+                    {/* Subida de Comprobante o Declarar Pago */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-xs font-semibold text-slate-300">
+                          Comprobante de Transferencia
                         </label>
-                        <span className="text-[10px] text-slate-400">Opcional pero acelera tu alta</span>
+                        <span className="text-[10px] text-slate-400">JPG, PNG o PDF</span>
                       </div>
 
                       <input
@@ -728,42 +618,51 @@ Adjunto mi comprobante para activar mi acceso al Campus.`;
                       />
 
                       {!selectedFile ? (
-                        <label
-                          htmlFor="proof-upload"
-                          className="border-2 border-dashed border-slate-700 hover:border-emerald-500/80 bg-slate-950/60 rounded-2xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer transition group text-center"
-                        >
-                          <div className="w-10 h-10 rounded-full bg-slate-900 group-hover:bg-emerald-500/10 text-slate-400 group-hover:text-emerald-400 flex items-center justify-center transition">
-                            <UploadCloud className="w-5 h-5" />
-                          </div>
-                          <div>
-                            <span className="text-xs font-bold text-white group-hover:text-emerald-400 transition block">
-                              Haz clic aquí para adjuntar tu comprobante de pago
+                        <div className="space-y-2">
+                          <label
+                            htmlFor="proof-upload"
+                            className="border-2 border-dashed border-slate-700/80 hover:border-emerald-500/60 bg-[#0B0F17] rounded-xl p-4 flex flex-col items-center justify-center gap-1.5 cursor-pointer transition text-center"
+                          >
+                            <UploadCloud className="w-5 h-5 text-slate-400" />
+                            <span className="text-xs font-medium text-slate-200">
+                              Adjuntar foto o PDF del comprobante
                             </span>
-                            <span className="text-[11px] text-slate-500 block mt-0.5">
-                              Formatos aceptados: JPG, PNG o PDF (hasta 5 MB)
+                            <span className="text-[10px] text-slate-500">
+                              Haz clic para seleccionar el archivo
                             </span>
+                          </label>
+
+                          <div className="flex items-center gap-2 pt-1">
+                            <input
+                              type="checkbox"
+                              id="no-proof"
+                              checked={noProofDeclared}
+                              onChange={(e) => setNoProofDeclared(e.target.checked)}
+                              className="rounded bg-[#0B0F17] border-slate-700 text-emerald-600 focus:ring-emerald-500 w-3.5 h-3.5 cursor-pointer"
+                            />
+                            <label htmlFor="no-proof" className="text-xs text-slate-400 cursor-pointer select-none">
+                              Ya realicé la transferencia pero no tengo el comprobante ahora
+                            </label>
                           </div>
-                        </label>
+                        </div>
                       ) : (
-                        <div className="bg-slate-950 rounded-2xl border border-emerald-500/40 p-4 flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center shrink-0">
-                              <FileText className="w-5 h-5" />
-                            </div>
-                            <div>
-                              <p className="text-xs font-bold text-white truncate max-w-[220px] sm:max-w-xs">
+                        <div className="bg-[#0B0F17] rounded-xl border border-emerald-500/30 p-3 flex items-center justify-between">
+                          <div className="flex items-center gap-2.5 truncate pr-2">
+                            <FileText className="w-4 h-4 text-emerald-400 shrink-0" />
+                            <div className="truncate">
+                              <p className="text-xs font-medium text-white truncate">
                                 {selectedFile.name}
                               </p>
                               <p className="text-[10px] text-slate-400">
-                                {(selectedFile.size / 1024).toFixed(0)} KB · Listo para enviar
+                                {(selectedFile.size / 1024).toFixed(0)} KB · Adjuntado
                               </p>
                             </div>
                           </div>
                           <button
                             type="button"
                             onClick={removeFile}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
-                            title="Remover archivo"
+                            className="p-1 rounded text-slate-400 hover:text-white transition cursor-pointer"
+                            title="Eliminar archivo"
                           >
                             <X className="w-4 h-4" />
                           </button>
@@ -771,7 +670,7 @@ Adjunto mi comprobante para activar mi acceso al Campus.`;
                       )}
 
                       {fileError && (
-                        <p className="text-[11px] text-rose-400 mt-1 flex items-center gap-1">
+                        <p className="text-[11px] text-rose-400 flex items-center gap-1">
                           <AlertCircle className="w-3 h-3" /> {fileError}
                         </p>
                       )}
@@ -779,55 +678,28 @@ Adjunto mi comprobante para activar mi acceso al Campus.`;
                   </div>
                 )}
 
-                {method === "card" && (
-                  <div className="bg-slate-950 rounded-2xl border border-slate-800 p-5 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <CreditCard className="w-4 h-4 text-sky-400" />
-                      <h4 className="font-bold text-xs text-white uppercase tracking-wider">
-                        Pago con Tarjeta de Débito o Crédito
-                      </h4>
-                    </div>
-                    <p className="text-xs text-slate-300 leading-relaxed">
-                      Aceptamos tarjetas de débito y crédito internacionales y locales a través de pasarela segura. Al presionar el botón de confirmación, te contactaremos de inmediato con el link de pago cifrado o podrás coordinarlo directamente por WhatsApp.
-                    </p>
-                    <div className="flex items-center gap-3 text-slate-500 text-xs pt-1">
-                      <span className="font-bold text-slate-400">VISA</span>
-                      <span>·</span>
-                      <span className="font-bold text-slate-400">Mastercard</span>
-                      <span>·</span>
-                      <span className="font-bold text-slate-400">American Express</span>
-                      <span>·</span>
-                      <span className="text-[11px] text-emerald-400 flex items-center gap-1">
-                        <Lock className="w-3 h-3" /> Cifrado 256-bit
-                      </span>
-                    </div>
-                  </div>
-                )}
-
+                {/* SI SELECCIONA YA PAGUE (EFECTIVO PRESENCIAL) */}
                 {method === "cash" && (
-                  <div className="bg-slate-950 rounded-2xl border border-slate-800 p-5 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Banknote className="w-4 h-4 text-amber-400" />
-                      <h4 className="font-bold text-xs text-white uppercase tracking-wider">
-                        Pago en Efectivo o Bocas de Cobranza
-                      </h4>
-                    </div>
-                    <p className="text-xs text-slate-300 leading-relaxed">
-                      Puedes abonar en cualquier boca de Aquí Pago, Pago Express, Tigo Money o depósito bancario por ventanilla. Envía tu solicitud y recibirás las instrucciones detalladas con tu código de cliente.
+                  <div className="bg-[#0B0F17] rounded-xl border border-slate-800 p-4 space-y-2 animate-fade-in text-xs text-slate-300">
+                    <p className="font-medium text-white">
+                      Pago presencial o previamente acordado
+                    </p>
+                    <p className="text-slate-400 leading-relaxed text-[11px]">
+                      Al enviar esta solicitud, tu registro quedará marcado como <strong className="text-slate-200">declaró pago en efectivo</strong>. Michael confirmará el cobro directamente en su panel administrativo para habilitar tu acceso al curso.
                     </p>
                   </div>
                 )}
               </section>
 
-              {/* CUPON DE DESCUENTO */}
-              <section className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-3">
+              {/* CUPON DE DESCUENTO (OPCIONAL) */}
+              <section className="bg-[#111827] border border-slate-800 rounded-xl p-4 space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                  <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                    ¿Tienes un cupón de descuento?
+                    Cupón de descuento
                   </label>
                   {coupon && (
-                    <span className="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                    <span className="text-[11px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
                       -{coupon.discount.toLocaleString("es-PY")} PYG
                     </span>
                   )}
@@ -836,31 +708,31 @@ Adjunto mi comprobante para activar mi acceso al Campus.`;
                 <div className="flex gap-2">
                   <input
                     type="text"
-                    placeholder="Ingresa tu cupón"
+                    placeholder="Código de cupón (opcional)"
                     value={couponCode}
                     onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                    className="min-w-0 flex-1 bg-slate-950 border border-slate-700/80 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 text-xs uppercase font-mono tracking-wider"
+                    className="min-w-0 flex-1 bg-[#0B0F17] border border-slate-700/80 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 text-xs font-mono uppercase"
                   />
                   <button
                     type="button"
                     onClick={() => void applyCoupon()}
                     disabled={couponLoading || !couponCode.trim()}
-                    className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white font-semibold rounded-xl text-xs transition cursor-pointer"
+                    className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white font-medium rounded-lg text-xs transition cursor-pointer"
                   >
-                    {couponLoading ? "Validando..." : "Aplicar"}
+                    {couponLoading ? "..." : "Aplicar"}
                   </button>
                 </div>
 
                 {coupon && (
-                  <p className="text-xs text-emerald-400 flex items-center gap-1 font-medium">
-                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                    ¡Cupón aplicado con éxito! Descuento: {coupon.name} (-{coupon.discount.toLocaleString("es-PY")} PYG)
+                  <p className="text-[11px] text-emerald-400 flex items-center gap-1 font-medium">
+                    <CheckCircle2 className="w-3 h-3" />
+                    Cupón aplicado: {coupon.name} (-{coupon.discount.toLocaleString("es-PY")} PYG)
                   </p>
                 )}
 
                 {couponError && (
-                  <p className="text-xs text-rose-400 flex items-center gap-1">
-                    <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                  <p className="text-[11px] text-rose-400 flex items-center gap-1">
+                    <AlertCircle className="w-3 h-3" />
                     {couponError}
                   </p>
                 )}
@@ -868,184 +740,108 @@ Adjunto mi comprobante para activar mi acceso al Campus.`;
 
               {/* ERRORES GENERALES */}
               {error && (
-                <div className="p-4 rounded-2xl bg-rose-950/60 border border-rose-800/80 text-rose-200 text-xs flex items-start gap-3">
-                  <AlertCircle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
-                  <div>
-                    <strong className="block font-semibold">Atención:</strong>
-                    {error}
-                  </div>
+                <div className="p-3.5 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-200 text-xs flex items-start gap-2.5">
+                  <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                  <span>{error}</span>
                 </div>
               )}
 
-              {/* BOTON CTA DE COMPRA GIGANTE (ESTILO HOTMART) */}
-              <div className="space-y-3 pt-2">
+              {/* BOTON DE ENVIO */}
+              <div className="pt-1">
                 <button
                   type="submit"
                   disabled={sending}
-                  className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-emerald-500 via-emerald-600 to-teal-600 hover:from-emerald-400 hover:via-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white font-extrabold text-base sm:text-lg flex items-center justify-center gap-2 shadow-xl shadow-emerald-500/25 transition cursor-pointer transform active:scale-[0.99]"
+                  className="w-full py-3.5 px-5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-600/20 transition cursor-pointer"
                 >
                   {sending ? (
-                    <div className="flex items-center gap-2 text-white">
-                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span>Procesando tu solicitud...</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      <span>Registrando tu solicitud...</span>
                     </div>
                   ) : (
                     <>
-                      <Lock className="w-5 h-5 text-white/90" />
-                      <span>COMPRAR AHORA Y OBTENER ACCESO</span>
-                      <ArrowRight className="w-5 h-5 ml-1" />
+                      <span>
+                        {method === "cash" || noProofDeclared
+                          ? "Registrar Pago y Solicitar Acceso"
+                          : selectedFile
+                          ? "Enviar Comprobante y Solicitar Acceso"
+                          : "Enviar Solicitud de Matrícula"}
+                      </span>
+                      <ArrowRight className="w-4 h-4" />
                     </>
                   )}
                 </button>
-
-                <div className="flex flex-wrap items-center justify-center gap-4 text-[11px] text-slate-400 pt-2">
-                  <span className="flex items-center gap-1">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                    Compra 100% Protegida
-                  </span>
-                  <span className="text-slate-600">·</span>
-                  <span className="flex items-center gap-1">
-                    <Lock className="w-3.5 h-3.5 text-slate-400" />
-                    Privacidad Resguardada
-                  </span>
-                  <span className="text-slate-600">·</span>
-                  <span className="flex items-center gap-1">
-                    <Sparkles className="w-3.5 h-3.5 text-sky-400" />
-                    Acceso en Minutos
-                  </span>
-                </div>
+                <p className="text-[11px] text-slate-500 text-center mt-2">
+                  Al enviar, el administrador revisa tu solicitud y libera tu acceso directo al Campus.
+                </p>
               </div>
             </form>
           </div>
 
-          {/* COLUMNA DERECHA: RESUMEN DEL PEDIDO (STICKY SIDEBAR) (5 COLUMNAS) */}
-          <div className="lg:col-span-5 space-y-6 lg:sticky lg:top-24">
-            {/* TARJETA DE RESUMEN DEL CURSO */}
-            <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-7 shadow-xl space-y-5">
-              <div className="space-y-3 pb-5 border-b border-slate-800">
-                <div className="flex items-center justify-between">
-                  <span className="px-2.5 py-1 rounded-full text-[10px] uppercase font-bold tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                    Acceso Vitalicio
-                  </span>
-                  <div className="flex items-center gap-1 text-amber-400 text-xs font-semibold">
-                    <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                    <span>4.9 / 5.0</span>
-                    <span className="text-slate-500 text-[10px]">(+500 alumnos)</span>
-                  </div>
-                </div>
-
-                <h1 className="text-lg sm:text-xl font-extrabold text-white leading-snug">
+          {/* COLUMNA DERECHA: RESUMEN REAL DEL CURSO (5 COLUMNAS) */}
+          <div className="lg:col-span-5 space-y-4 lg:sticky lg:top-20">
+            <div className="bg-[#111827] border border-slate-800 rounded-2xl p-5 sm:p-6 shadow-xl space-y-4">
+              <div>
+                <span className="text-[10px] uppercase font-bold tracking-wider text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                  Curso Seleccionado
+                </span>
+                <h1 className="text-base sm:text-lg font-bold text-white mt-2 leading-snug">
                   {course.name}
                 </h1>
-
                 {course.description && (
-                  <p className="text-xs text-slate-400 leading-relaxed">
+                  <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
                     {course.description}
                   </p>
                 )}
               </div>
 
-              {/* LISTA DE BENEFICIOS INCLUIDOS */}
-              <div className="space-y-2.5">
-                <span className="text-[11px] uppercase tracking-wider font-bold text-slate-400 block mb-1">
-                  Tu inscripción incluye:
-                </span>
-                <ul className="space-y-2 text-xs text-slate-300">
-                  <li className="flex items-start gap-2.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                    <span>Acceso ilimitado 24/7 a las lecciones en el Campus</span>
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                    <span>Clases en alta definición y recursos descargables</span>
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                    <span>Certificado digital oficial al completar el programa</span>
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                    <span>Canal de resolución de dudas con el instructor</span>
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                    <span>Acceso multiplataforma: computadora, tablet y celular</span>
-                  </li>
-                </ul>
-              </div>
-
-              {/* DESGLOSE DE PRECIOS */}
-              <div className="pt-4 border-t border-slate-800 space-y-2.5">
-                <div className="flex justify-between items-center text-xs text-slate-400">
-                  <span>Precio habitual:</span>
-                  <span className="line-through">{regularPrice.toLocaleString("es-PY")} PYG</span>
-                </div>
-
-                <div className="flex justify-between items-center text-xs text-slate-300">
-                  <span>Precio promocional:</span>
-                  <span className="font-semibold text-white">{course.price_pyg.toLocaleString("es-PY")} PYG</span>
+              {/* DESGLOSE REAL */}
+              <div className="pt-3 border-t border-slate-800 space-y-2 text-xs">
+                <div className="flex justify-between items-center text-slate-300">
+                  <span>Precio del curso:</span>
+                  <span className="font-mono text-white">{course.price_pyg.toLocaleString("es-PY")} PYG</span>
                 </div>
 
                 {coupon && (
-                  <div className="flex justify-between items-center text-xs text-emerald-400 font-semibold">
-                    <span>Descuento cupón ({coupon.name}):</span>
-                    <span>-{coupon.discount.toLocaleString("es-PY")} PYG</span>
+                  <div className="flex justify-between items-center text-emerald-400 font-medium">
+                    <span>Descuento ({coupon.name}):</span>
+                    <span className="font-mono">-{coupon.discount.toLocaleString("es-PY")} PYG</span>
                   </div>
                 )}
 
-                <div className="pt-3 border-t border-slate-800/80 flex items-baseline justify-between">
-                  <div>
-                    <span className="text-xs uppercase tracking-wider font-bold text-slate-300 block">
-                      Total a Pagar:
-                    </span>
-                    <span className="text-[10px] text-slate-400 block">
-                      Pago único · Sin costos mensuales
-                    </span>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-2xl sm:text-3xl font-black text-emerald-400 font-mono tracking-tight">
-                      {finalPrice.toLocaleString("es-PY")} PYG
-                    </div>
-                    <span className="text-[10px] text-slate-500 font-medium">
-                      (Aprox. ~${usdReference} USD)
-                    </span>
-                  </div>
+                <div className="pt-2 border-t border-slate-800 flex justify-between items-baseline">
+                  <span className="font-semibold text-slate-200">Total a Pagar:</span>
+                  <span className="text-xl sm:text-2xl font-mono font-bold text-emerald-400">
+                    {finalPrice.toLocaleString("es-PY")} PYG
+                  </span>
                 </div>
               </div>
-            </div>
 
-            {/* SELLO DE GARANTIA INCONDICIONAL */}
-            <div className="bg-gradient-to-br from-slate-900 to-slate-950 border border-amber-500/30 rounded-3xl p-5 shadow-lg flex items-start gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center shrink-0 border border-amber-500/20">
-                <Award className="w-6 h-6" />
+              {/* EXPLICACION DEL PROCESO */}
+              <div className="pt-3 border-t border-slate-800 text-[11px] text-slate-400 space-y-1.5">
+                <p className="font-semibold text-slate-300">¿Cómo funciona?</p>
+                <ol className="list-decimal list-inside space-y-1 text-slate-400">
+                  <li>Completas el formulario con tus datos.</li>
+                  <li>Michael verifica el pago en su panel de administración.</li>
+                  <li>Recibes tu enlace Magic Link para ingresar al Campus sin contraseña.</li>
+                </ol>
               </div>
-              <div className="space-y-1">
-                <h4 className="font-bold text-sm text-white">Garantía Incondicional de 7 Días</h4>
-                <p className="text-xs text-slate-400 leading-relaxed">
-                  Prueba el curso sin ningún riesgo. Si no cumple tus expectativas, te devolvemos el 100% de tu dinero sin preguntas ni complicaciones.
-                </p>
-              </div>
-            </div>
 
-            {/* ASISTENCIA POR WHATSAPP */}
-            <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-4 flex items-center justify-between gap-3 text-xs">
-              <div>
-                <span className="font-bold text-white block">¿Dudas antes de comprar?</span>
-                <span className="text-slate-400 text-[11px] block">
-                  Chatea directamente con nuestro asesor académico
-                </span>
+              {/* CONTACTO DE CONSULTAS */}
+              <div className="pt-3 border-t border-slate-800/80 flex items-center justify-between text-xs">
+                <span className="text-slate-400 text-[11px]">¿Tienes dudas?</span>
+                <a
+                  href={`https://wa.me/595981000000?text=${encodeURIComponent(
+                    `Hola Michael, tengo una consulta sobre el curso "${course.name}".`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-emerald-400 hover:text-emerald-300 font-semibold flex items-center gap-1 cursor-pointer"
+                >
+                  <Phone className="w-3 h-3" />
+                  Escribir a Michael
+                </a>
               </div>
-              <a
-                href={`https://wa.me/595981000000?text=${encodeURIComponent(
-                  `Hola, tengo una consulta sobre el curso "${course.name}" antes de inscribirme.`
-                )}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600/30 text-emerald-400 border border-emerald-500/30 rounded-xl font-bold transition flex items-center gap-1.5 shrink-0"
-              >
-                <Phone className="w-3.5 h-3.5" />
-                WhatsApp
-              </a>
             </div>
           </div>
         </div>
