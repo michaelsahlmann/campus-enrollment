@@ -106,6 +106,7 @@ export class LearnHouseClient {
         first_name: firstName,
         last_name: lastName,
         role_id: 4, // Rol de Estudiante
+        email_verified: true, // Acceso inmediato sin confirmación de email
       }),
     });
 
