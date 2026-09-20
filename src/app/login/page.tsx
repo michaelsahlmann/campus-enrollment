@@ -2,7 +2,8 @@
 
 import React, { useState } from "react";
 import { useRouter } from "next/navigation";
-import { GraduationCap, Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
+import BrandLogo from "@/components/brand-logo";
 
 export default function LoginPage() {
   const [password, setPassword] = useState("");
@@ -42,8 +43,8 @@ export default function LoginPage() {
       <div className="w-full max-w-sm space-y-6">
         {/* Brand Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-400">
-            <GraduationCap className="w-6 h-6" />
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-400 shadow-sm">
+            <BrandLogo className="w-6 h-6" />
           </div>
           <h1 className="text-lg font-bold text-white tracking-tight">
             Campus Michael Sahlmann

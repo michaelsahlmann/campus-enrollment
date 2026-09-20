@@ -14,12 +14,12 @@ import {
   Phone,
   Mail,
   User,
-  GraduationCap,
   AlertCircle,
   X,
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
+import BrandLogo from "@/components/brand-logo";
 import { BankSettings, DEFAULT_BANK_SETTINGS } from "@/lib/settings";
 
 type Course = {
@@ -278,8 +278,8 @@ ${phone ? `Teléfono: ${phone}\n` : ""}${method === "transfer" ? (selectedFile &
       <header className="border-b border-slate-800/80 bg-[#111827]/80 backdrop-blur-md sticky top-0 z-30">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
-              <GraduationCap className="w-4 h-4" />
+            <div className="w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400">
+              <BrandLogo className="w-4 h-4" />
             </div>
             <div>
               <span className="font-semibold text-sm text-white tracking-tight block leading-tight">
