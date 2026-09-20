@@ -20,8 +20,22 @@ import {
   Link2,
   X,
   Eye,
+  Trash2,
+  Pencil,
+  AlertTriangle,
+  Tag,
 } from "lucide-react";
 import { DEFAULT_COURSES, CourseItem } from "@/lib/courses";
+
+interface CouponItem {
+  id: string;
+  code: string;
+  name: string;
+  discount_type: "percentage" | "fixed";
+  discount_value: number;
+  is_active: boolean;
+  created_at?: string;
+}
 
 interface CheckoutItem {
   id: string;
@@ -106,7 +120,12 @@ export default function CampusPortalPage() {
   const [couponType, setCouponType] = useState("percentage");
   const [couponValue, setCouponValue] = useState(10);
   const [couponLength, setCouponLength] = useState(6);
+  const [couponCustomCode, setCouponCustomCode] = useState("");
   const [couponMessage, setCouponMessage] = useState<string | null>(null);
+  const [coupons, setCoupons] = useState<CouponItem[]>([]);
+  const [isLoadingCoupons, setIsLoadingCoupons] = useState(false);
+  const [editingCoupon, setEditingCoupon] = useState<CouponItem | null>(null);
+  const [isUpdatingCoupon, setIsUpdatingCoupon] = useState(false);
 
   // Checkouts State
   const [checkouts, setCheckouts] = useState<CheckoutItem[]>([]);
@@ -116,6 +135,15 @@ export default function CampusPortalPage() {
   const [checkoutPrice, setCheckoutPrice] = useState<number>(1500000);
   const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
   const [previewCheckoutSlug, setPreviewCheckoutSlug] = useState<string | null>(null);
+
+  // Modal en Rojo de Eliminación Definitiva (Ciclo de borrado)
+  const [confirmDeleteModal, setConfirmDeleteModal] = useState<{
+    type: "checkout" | "coupon" | "all_coupons";
+    id?: string;
+    title: string;
+    description: string;
+  } | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Load students
   const fetchStudents = async () => {
@@ -204,14 +232,121 @@ export default function CampusPortalPage() {
     }
   };
 
-  const createCoupon = async (event: React.FormEvent) => {
-    event.preventDefault(); setCouponMessage(null);
+  const fetchCoupons = async () => {
+    setIsLoadingCoupons(true);
     try {
-      const response = await fetch("/api/coupons", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: couponName, discountType: couponType, discountValue: couponValue, length: couponLength }) });
+      const res = await fetch("/api/coupons");
+      const data = await res.json();
+      if (data.coupons) {
+        setCoupons(data.coupons);
+      }
+    } catch (err: unknown) {
+      console.error(err);
+    } finally {
+      setIsLoadingCoupons(false);
+    }
+  };
+
+  const createCoupon = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setCouponMessage(null);
+    try {
+      const response = await fetch("/api/coupons", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: couponName,
+          code: couponCustomCode.trim() || undefined,
+          discountType: couponType,
+          discountValue: couponValue,
+          length: couponLength,
+        }),
+      });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "No se pudo crear el cupón.");
-      setCouponMessage(`Cupón creado: ${data.coupon.code}`); setCouponName("");
-    } catch (cause: unknown) { setCouponMessage(cause instanceof Error ? cause.message : "No se pudo crear el cupón."); }
+      setCouponMessage(`¡Cupón creado con éxito! Código: ${data.coupon.code}`);
+      setCouponName("");
+      setCouponCustomCode("");
+      await fetchCoupons();
+    } catch (cause: unknown) {
+      setCouponMessage(cause instanceof Error ? cause.message : "No se pudo crear el cupón.");
+    }
+  };
+
+  const toggleCouponActive = async (item: CouponItem) => {
+    try {
+      const res = await fetch(`/api/coupons/${item.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          isActive: !item.is_active,
+        }),
+      });
+      if (res.ok) {
+        setCoupons((prev) =>
+          prev.map((c) => (c.id === item.id ? { ...c, is_active: !c.is_active } : c))
+        );
+      }
+    } catch (err: unknown) {
+      console.error(err);
+    }
+  };
+
+  const handleUpdateCoupon = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingCoupon) return;
+    setIsUpdatingCoupon(true);
+    try {
+      const res = await fetch(`/api/coupons/${editingCoupon.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editingCoupon.name,
+          discountType: editingCoupon.discount_type,
+          discountValue: editingCoupon.discount_value,
+          isActive: editingCoupon.is_active,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error al actualizar cupón.");
+      setEditingCoupon(null);
+      await fetchCoupons();
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Error al actualizar cupón.");
+    } finally {
+      setIsUpdatingCoupon(false);
+    }
+  };
+
+  const executeDelete = async () => {
+    if (!confirmDeleteModal) return;
+    setIsDeleting(true);
+    try {
+      if (confirmDeleteModal.type === "checkout" && confirmDeleteModal.id) {
+        const res = await fetch(`/api/checkouts/${confirmDeleteModal.id}`, { method: "DELETE" });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Error al eliminar checkout.");
+        setCheckouts((prev) => prev.filter((c) => c.id !== confirmDeleteModal.id));
+        setCheckoutMessage("Link de checkout eliminado correctamente.");
+      } else if (confirmDeleteModal.type === "coupon" && confirmDeleteModal.id) {
+        const res = await fetch(`/api/coupons/${confirmDeleteModal.id}`, { method: "DELETE" });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Error al eliminar cupón.");
+        setCoupons((prev) => prev.filter((c) => c.id !== confirmDeleteModal.id));
+        setCouponMessage("Cupón eliminado correctamente.");
+      } else if (confirmDeleteModal.type === "all_coupons") {
+        const res = await fetch(`/api/coupons`, { method: "DELETE" });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Error al eliminar cupones.");
+        setCoupons([]);
+        setCouponMessage("Todos los cupones fueron eliminados correctamente.");
+      }
+      setConfirmDeleteModal(null);
+    } catch (err: unknown) {
+      alert(err instanceof Error ? err.message : "Error al procesar eliminación.");
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const fetchCheckouts = async () => {
@@ -239,7 +374,7 @@ export default function CampusPortalPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: checkoutTitle,
-          courseId: targetCourse?.id || targetCourse?.course_uuid || "",
+          courseId: targetCourse?.course_uuid || targetCourse?.id || "",
           pricePyg: checkoutPrice,
         }),
       });
@@ -446,7 +581,7 @@ ${successData.magicLink}`
           <button onClick={() => { setActiveTab("orders"); void fetchOrders(); }} className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition cursor-pointer ${activeTab === "orders" ? "border-sky-500 text-sky-400" : "border-transparent text-slate-400 hover:text-slate-200"}`}>
             <CheckCircle2 className="w-4 h-4" /> Pagos pendientes
           </button>
-          <button onClick={() => setActiveTab("coupons")} className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition cursor-pointer ${activeTab === "coupons" ? "border-sky-500 text-sky-400" : "border-transparent text-slate-400 hover:text-slate-200"}`}>
+          <button onClick={() => { setActiveTab("coupons"); void fetchCoupons(); }} className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition cursor-pointer ${activeTab === "coupons" ? "border-sky-500 text-sky-400" : "border-transparent text-slate-400 hover:text-slate-200"}`}>
             <Sparkles className="w-4 h-4" /> Cupones
           </button>
           <button
@@ -1228,17 +1363,38 @@ ${successData.magicLink}`
                           </button>
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={() => void toggleCheckoutActive(item)}
-                          className={`text-[11px] font-semibold transition cursor-pointer ${
-                            item.is_active
-                              ? "text-slate-500 hover:text-amber-400"
-                              : "text-emerald-400 hover:text-emerald-300"
-                          }`}
-                        >
-                          {item.is_active ? "Desactivar" : "Activar"}
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => void toggleCheckoutActive(item)}
+                            className={`text-[11px] font-semibold transition cursor-pointer px-2.5 py-1 rounded ${
+                              item.is_active
+                                ? "bg-slate-800 text-slate-400 hover:text-amber-400"
+                                : "bg-emerald-950/50 text-emerald-400 hover:text-emerald-300 border border-emerald-500/20"
+                            }`}
+                          >
+                            {item.is_active ? "Desactivar" : "Activar"}
+                          </button>
+
+                          {!item.is_active && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setConfirmDeleteModal({
+                                  type: "checkout",
+                                  id: item.id,
+                                  title: `Eliminar Link "${item.title}"`,
+                                  description: `¿Estás seguro de que deseas eliminar definitivamente este link de checkout? Esta acción es irreversible y eliminará el enlace público /checkout/${item.slug}.`,
+                                });
+                              }}
+                              className="text-[11px] font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-950/50 px-2 py-1 rounded transition cursor-pointer flex items-center gap-1"
+                              title="Eliminar checkout definitivamente"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              Eliminar
+                            </button>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -1256,8 +1412,266 @@ ${successData.magicLink}`
           </div>
         )}
 
+        {/* TAB: GESTION COMPLETA DE CUPONES */}
         {activeTab === "coupons" && (
-          <div className="max-w-xl space-y-6"><div><h2 className="text-xl font-bold text-white">Generar cupón</h2><p className="text-xs text-slate-400">El código se aplica en el checkout antes de que el alumno envíe su solicitud.</p></div><form onSubmit={createCoupon} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4"><label className="block text-sm">Nombre interno<input required value={couponName} onChange={(event) => setCouponName(event.target.value)} placeholder="Ej. Beca lanzamiento" className="mt-1 w-full bg-slate-950 border border-slate-700 rounded-lg p-3" /></label><div className="grid grid-cols-2 gap-3"><label className="text-sm">Descuento<select value={couponType} onChange={(event) => setCouponType(event.target.value)} className="mt-1 w-full bg-slate-950 border border-slate-700 rounded-lg p-3"><option value="percentage">Porcentaje (%)</option><option value="fixed">Monto fijo (PYG)</option></select></label><label className="text-sm">Valor<input required min="1" type="number" value={couponValue} onChange={(event) => setCouponValue(Number(event.target.value))} className="mt-1 w-full bg-slate-950 border border-slate-700 rounded-lg p-3" /></label></div><label className="block text-sm">Longitud del código<select value={couponLength} onChange={(event) => setCouponLength(Number(event.target.value))} className="mt-1 w-full bg-slate-950 border border-slate-700 rounded-lg p-3"><option value={4}>4 caracteres</option><option value={6}>6 caracteres</option></select></label><button className="bg-sky-600 hover:bg-sky-500 rounded-lg py-3 px-4 font-semibold">Generar cupón</button>{couponMessage && <p className="text-emerald-400 text-sm">{couponMessage}</p>}</form></div>
+          <div className="space-y-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-amber-400" />
+                  Gestión de Cupones de Descuento
+                </h2>
+                <p className="text-xs text-slate-400">
+                  Crea, edita y administra códigos promocionales aplicables en el checkout de tus cursos.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void fetchCoupons()}
+                  disabled={isLoadingCoupons}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white rounded-xl text-xs font-semibold transition cursor-pointer"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isLoadingCoupons ? "animate-spin" : ""}`} />
+                  {isLoadingCoupons ? "Cargando..." : "Actualizar"}
+                </button>
+
+                {coupons.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConfirmDeleteModal({
+                        type: "all_coupons",
+                        title: "Eliminar Todos los Cupones",
+                        description: `¿Estás seguro de que deseas eliminar definitivamente TODOS los ${coupons.length} cupones existentes? Esta acción es irreversible.`,
+                      });
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-rose-950/60 hover:bg-rose-900/60 text-rose-300 border border-rose-800/80 rounded-xl text-xs font-semibold transition cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+                    Borrar todos los cupones
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {couponMessage && (
+              <div className="p-3 rounded-xl bg-slate-900 border border-slate-700 text-emerald-400 text-xs flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>{couponMessage}</span>
+              </div>
+            )}
+
+            {/* Formulario de Creación de Cupón */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+              <h3 className="font-bold text-white text-sm flex items-center gap-2">
+                <Tag className="w-4 h-4 text-emerald-400" />
+                Crear Nuevo Cupón
+              </h3>
+
+              <form onSubmit={createCoupon} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  {/* Nombre Interno */}
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+                      Nombre Interno
+                    </label>
+                    <input
+                      required
+                      type="text"
+                      placeholder="Ej. Beca Lanzamiento"
+                      value={couponName}
+                      onChange={(e) => setCouponName(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 text-xs sm:text-sm"
+                    />
+                  </div>
+
+                  {/* Código Personalizado (Opcional) */}
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+                      Código Personalizado <span className="text-slate-500 font-normal">(opcional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="Ej. BECA50 (o dejar vacío)"
+                      value={couponCustomCode}
+                      onChange={(e) => setCouponCustomCode(e.target.value.toUpperCase())}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 text-xs sm:text-sm font-mono uppercase"
+                    />
+                  </div>
+
+                  {/* Tipo de Descuento */}
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+                      Tipo de Descuento
+                    </label>
+                    <select
+                      value={couponType}
+                      onChange={(e) => setCouponType(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-emerald-500 text-xs sm:text-sm cursor-pointer"
+                    >
+                      <option value="percentage">Porcentaje (%)</option>
+                      <option value="fixed">Monto Fijo (PYG)</option>
+                    </select>
+                  </div>
+
+                  {/* Valor del Descuento */}
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+                      Valor ({couponType === "percentage" ? "%" : "PYG"})
+                    </label>
+                    <input
+                      required
+                      min={1}
+                      max={couponType === "percentage" ? 100 : undefined}
+                      type="number"
+                      value={couponValue}
+                      onChange={(e) => setCouponValue(Number(e.target.value))}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 text-xs sm:text-sm"
+                    />
+                  </div>
+                </div>
+
+                {!couponCustomCode && (
+                  <div className="flex items-center gap-3 pt-1 text-xs text-slate-400">
+                    <span>Longitud del código aleatorio:</span>
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="couponLength"
+                        checked={couponLength === 4}
+                        onChange={() => setCouponLength(4)}
+                        className="text-emerald-500"
+                      />
+                      <span>4 caracteres</span>
+                    </label>
+                    <label className="flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="couponLength"
+                        checked={couponLength === 6}
+                        onChange={() => setCouponLength(6)}
+                        className="text-emerald-500"
+                      />
+                      <span>6 caracteres</span>
+                    </label>
+                  </div>
+                )}
+
+                <div className="flex justify-end pt-2">
+                  <button
+                    type="submit"
+                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-emerald-600/20 cursor-pointer flex items-center gap-2"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    Generar Cupón
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Listado de Todos los Cupones */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-white text-sm">
+                  Cupones Registrados ({coupons.length})
+                </h3>
+              </div>
+
+              {isLoadingCoupons ? (
+                <div className="text-slate-400 text-xs py-6 text-center">Cargando cupones...</div>
+              ) : coupons.length === 0 ? (
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-center text-slate-400 text-xs">
+                  No hay cupones creados aún. Genera tu primer cupón arriba.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {coupons.map((c) => (
+                    <div
+                      key={c.id}
+                      className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between space-y-4"
+                    >
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`w-2 h-2 rounded-full ${
+                                c.is_active ? "bg-emerald-400" : "bg-slate-600"
+                              }`}
+                            />
+                            <span className="font-mono text-base font-bold text-white tracking-wider">
+                              {c.code}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(c.code, "link")}
+                            className="p-1 rounded text-slate-400 hover:text-white transition cursor-pointer"
+                            title="Copiar código"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
+                        <p className="text-xs text-slate-300 font-medium">{c.name}</p>
+
+                        <div className="inline-block px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">
+                          {c.discount_type === "percentage"
+                            ? `${c.discount_value}% OFF`
+                            : `-${Number(c.discount_value).toLocaleString()} PYG`}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-3 border-t border-slate-800/80 text-xs">
+                        <button
+                          type="button"
+                          onClick={() => setEditingCoupon(c)}
+                          className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium flex items-center gap-1.5 transition cursor-pointer"
+                        >
+                          <Pencil className="w-3 h-3 text-sky-400" />
+                          Editar
+                        </button>
+
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => void toggleCouponActive(c)}
+                            className={`text-[11px] font-semibold transition cursor-pointer px-2 py-1 rounded ${
+                              c.is_active
+                                ? "bg-slate-800 text-slate-400 hover:text-amber-400"
+                                : "bg-emerald-950/50 text-emerald-400 hover:text-emerald-300 border border-emerald-500/20"
+                            }`}
+                          >
+                            {c.is_active ? "Desactivar" : "Activar"}
+                          </button>
+
+                          {!c.is_active && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setConfirmDeleteModal({
+                                  type: "coupon",
+                                  id: c.id,
+                                  title: `Eliminar Cupón "${c.code}"`,
+                                  description: `¿Estás seguro de que deseas eliminar definitivamente el cupón ${c.code} (${c.name})? Esta acción es irreversible.`,
+                                });
+                              }}
+                              className="text-[11px] font-semibold text-rose-400 hover:text-rose-300 hover:bg-rose-950/50 px-2 py-1 rounded transition cursor-pointer flex items-center gap-1"
+                              title="Eliminar cupón definitivamente"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              Eliminar
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
         )}
 
         {/* TAB 4: CONFIGURACION & VERCEL */}
@@ -1364,6 +1778,169 @@ ${successData.magicLink}`
                   title="Checkout Preview"
                   className="w-full h-[650px] rounded-xl border border-slate-800 bg-slate-950"
                 />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL DE EDICIÓN DE CUPÓN */}
+        {editingCoupon && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-md shadow-2xl overflow-hidden p-6 space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                <div className="flex items-center gap-2">
+                  <Pencil className="w-4 h-4 text-sky-400" />
+                  <h3 className="font-bold text-white text-base">
+                    Editar Cupón: <span className="font-mono text-emerald-400">{editingCoupon.code}</span>
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setEditingCoupon(null)}
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <form onSubmit={handleUpdateCoupon} className="space-y-4">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-400 mb-1">
+                    Nombre Interno
+                  </label>
+                  <input
+                    required
+                    type="text"
+                    value={editingCoupon.name}
+                    onChange={(e) => setEditingCoupon({ ...editingCoupon, name: e.target.value })}
+                    className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white text-sm"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">
+                      Tipo de Descuento
+                    </label>
+                    <select
+                      value={editingCoupon.discount_type}
+                      onChange={(e) =>
+                        setEditingCoupon({
+                          ...editingCoupon,
+                          discount_type: e.target.value as "percentage" | "fixed",
+                        })
+                      }
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white text-sm cursor-pointer"
+                    >
+                      <option value="percentage">Porcentaje (%)</option>
+                      <option value="fixed">Monto Fijo (PYG)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-400 mb-1">
+                      Valor ({editingCoupon.discount_type === "percentage" ? "%" : "PYG"})
+                    </label>
+                    <input
+                      required
+                      min={1}
+                      max={editingCoupon.discount_type === "percentage" ? 100 : undefined}
+                      type="number"
+                      value={editingCoupon.discount_value}
+                      onChange={(e) =>
+                        setEditingCoupon({
+                          ...editingCoupon,
+                          discount_value: Number(e.target.value),
+                        })
+                      }
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-3.5 py-2.5 text-white text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <input
+                    type="checkbox"
+                    id="edit-is-active"
+                    checked={editingCoupon.is_active}
+                    onChange={(e) =>
+                      setEditingCoupon({ ...editingCoupon, is_active: e.target.checked })
+                    }
+                    className="w-4 h-4 rounded text-emerald-500 bg-slate-950 border-slate-700 cursor-pointer"
+                  />
+                  <label htmlFor="edit-is-active" className="text-xs text-slate-300 font-medium cursor-pointer">
+                    Cupón Activo (permite aplicarse en el checkout)
+                  </label>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-3 border-t border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setEditingCoupon(null)}
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition cursor-pointer"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isUpdatingCoupon}
+                    className="px-5 py-2 bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
+                  >
+                    {isUpdatingCoupon ? "Guardando..." : "Guardar Cambios"}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL EN ROJO DE CONFIRMACION DE ELIMINACION DEFINITIVA */}
+        {confirmDeleteModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-sm animate-fade-in">
+            <div className="bg-slate-900 border border-red-500/60 rounded-2xl w-full max-w-md shadow-2xl shadow-red-950/60 overflow-hidden p-6 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center shrink-0 border border-red-500/40">
+                  <AlertTriangle className="w-6 h-6" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-base">
+                    {confirmDeleteModal.title}
+                  </h3>
+                  <p className="text-xs text-rose-400 font-medium">
+                    Confirmación de Eliminación Definitiva
+                  </p>
+                </div>
+              </div>
+
+              <p className="text-xs text-slate-300 leading-relaxed">
+                {confirmDeleteModal.description}
+              </p>
+
+              <div className="p-3 rounded-xl bg-red-950/50 border border-red-800/80 text-rose-200 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+                <span>
+                  <strong>Aviso:</strong> Esta acción no se puede deshacer. Una vez eliminado, los enlaces o códigos dejarán de funcionar permanentemente.
+                </span>
+              </div>
+
+              <div className="flex justify-end gap-2.5 pt-2 border-t border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setConfirmDeleteModal(null)}
+                  disabled={isDeleting}
+                  className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void executeDelete()}
+                  disabled={isDeleting}
+                  className="px-5 py-2.5 bg-red-600 hover:bg-red-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-red-600/30 cursor-pointer flex items-center gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  {isDeleting ? "Eliminando..." : "Sí, eliminar definitivamente"}
+                </button>
               </div>
             </div>
           </div>
