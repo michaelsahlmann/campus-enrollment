@@ -39,37 +39,46 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#06080D] flex items-center justify-center px-4 py-12 text-slate-100 antialiased selection:bg-sky-500/30">
-      <div className="w-full max-w-sm space-y-6">
+    <main className="min-h-screen bg-[#050507] flex items-center justify-center px-4 py-16 text-zinc-100 antialiased selection:bg-sky-500/30 relative overflow-hidden">
+      {/* Apple Pro Ambient Backlight */}
+      <div 
+        className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[450px] bg-gradient-to-b from-sky-500/10 via-sky-500/0 to-transparent blur-3xl opacity-60"
+        aria-hidden="true"
+      />
+
+      <div className="w-full max-w-sm space-y-7 relative z-10">
         {/* Brand Header */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-sky-500/10 border border-sky-500/20 text-sky-400 shadow-sm">
-            <BrandLogo className="w-6 h-6" />
+        <div className="text-center space-y-3">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-white/[0.04] border border-white/[0.12] text-sky-400 shadow-[0_10px_30px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.2)]">
+            <BrandLogo className="w-7 h-7 text-sky-400" />
           </div>
-          <h1 className="text-lg font-bold text-white tracking-tight">
-            Campus Michael Sahlmann
-          </h1>
-          <p className="text-xs text-slate-400">
-            Panel Administrativo & Matrículas
-          </p>
+          <div>
+            <h1 className="text-xl font-bold text-white tracking-tight">
+              Campus Michael Sahlmann
+            </h1>
+            <p className="text-xs text-zinc-400 mt-1 font-medium">
+              Panel Administrativo & Matrículas
+            </p>
+          </div>
         </div>
 
-        {/* Login Container */}
-        <div className="bg-[#0B0F17] border border-slate-800 rounded-2xl p-6 sm:p-7 shadow-xl space-y-5">
-          <div className="flex items-center gap-2 pb-3 border-b border-slate-800/80">
-            <Lock className="w-3.5 h-3.5 text-sky-400" />
-            <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-300">
-              Acceso Restringido
-            </h2>
+        {/* Login Container — Apple Glass Card */}
+        <div className="apple-card rounded-3xl p-7 sm:p-8 space-y-5">
+          <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-zinc-400">
+              <Lock className="w-3.5 h-3.5 text-sky-400" />
+              <span>Autenticación Pro</span>
+            </div>
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400/80 shadow-[0_0_8px_rgba(16,185,129,0.8)]" />
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label
                 htmlFor="admin-password-input"
-                className="block text-xs font-semibold text-slate-300 mb-1.5"
+                className="block text-[11px] font-medium uppercase tracking-wider text-zinc-400 mb-2"
               >
-                Contraseña de Administrador
+                Contraseña Maestra
               </label>
               <div className="relative">
                 <input
@@ -78,15 +87,15 @@ export default function LoginPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="w-full px-3.5 py-2.5 pr-10 bg-[#111827] border border-slate-700/80 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-sky-500 focus-visible:ring-2 focus-visible:ring-sky-500 text-sm transition"
+                  placeholder="••••••••••••"
+                  className="w-full px-4 py-3 pr-11 apple-input rounded-xl text-white placeholder-zinc-600 text-sm"
                   autoFocus
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
                   aria-label={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 transition cursor-pointer p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 rounded"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition cursor-pointer p-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 rounded-lg"
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -95,7 +104,7 @@ export default function LoginPage() {
 
             {error ? (
               <div
-                className="p-3 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-300 text-xs flex items-center gap-2"
+                className="p-3 rounded-xl bg-rose-950/40 border border-rose-500/30 text-rose-300 text-xs flex items-center gap-2"
                 role="alert"
               >
                 <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
@@ -106,15 +115,15 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading || !password}
-              className="w-full py-2.5 px-4 rounded-xl bg-sky-600 hover:bg-sky-500 active:scale-[0.99] text-white font-semibold text-xs shadow-md transition disabled:opacity-50 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+              className="w-full py-3 px-4 rounded-xl bg-white hover:bg-zinc-100 active:scale-[0.99] text-zinc-950 font-semibold text-xs tracking-wide uppercase transition-all shadow-[0_4px_20px_rgba(255,255,255,0.12)] disabled:opacity-40 disabled:pointer-events-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
               {loading ? "Verificando..." : "Ingresar al Panel"}
             </button>
           </form>
         </div>
 
-        <p className="text-center text-[11px] text-slate-500">
-          Sesión de administrador protegida
+        <p className="text-center text-[11px] text-zinc-600 font-medium">
+          Sesión cifrada de alta seguridad · Campus Virtual
         </p>
       </div>
     </main>
