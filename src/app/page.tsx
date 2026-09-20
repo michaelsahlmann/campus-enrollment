@@ -52,7 +52,7 @@ interface OrderItem {
 
 export default function CampusPortalPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"form" | "students" | "courses" | "orders" | "config">("form");
+  const [activeTab, setActiveTab] = useState<"form" | "students" | "courses" | "orders" | "coupons" | "config">("form");
 
   // Form State
   const [name, setName] = useState("");
@@ -85,6 +85,11 @@ export default function CampusPortalPage() {
   const [orders, setOrders] = useState<OrderItem[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
   const [orderMessage, setOrderMessage] = useState<string | null>(null);
+  const [couponName, setCouponName] = useState("");
+  const [couponType, setCouponType] = useState("percentage");
+  const [couponValue, setCouponValue] = useState(10);
+  const [couponLength, setCouponLength] = useState(6);
+  const [couponMessage, setCouponMessage] = useState<string | null>(null);
 
   // Load students
   const fetchStudents = async () => {
@@ -171,6 +176,16 @@ export default function CampusPortalPage() {
     } catch (cause: unknown) {
       setOrderMessage(cause instanceof Error ? cause.message : "No se pudo confirmar la orden.");
     }
+  };
+
+  const createCoupon = async (event: React.FormEvent) => {
+    event.preventDefault(); setCouponMessage(null);
+    try {
+      const response = await fetch("/api/coupons", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: couponName, discountType: couponType, discountValue: couponValue, length: couponLength }) });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "No se pudo crear el cupón.");
+      setCouponMessage(`Cupón creado: ${data.coupon.code}`); setCouponName("");
+    } catch (cause: unknown) { setCouponMessage(cause instanceof Error ? cause.message : "No se pudo crear el cupón."); }
   };
 
   const handleEnrollSubmit = async (e: React.FormEvent) => {
@@ -320,6 +335,9 @@ ${successData.magicLink}`
           </button>
           <button onClick={() => { setActiveTab("orders"); void fetchOrders(); }} className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition ${activeTab === "orders" ? "border-sky-500 text-sky-400" : "border-transparent text-slate-400 hover:text-slate-200"}`}>
             <CheckCircle2 className="w-4 h-4" /> Pagos pendientes
+          </button>
+          <button onClick={() => setActiveTab("coupons")} className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition ${activeTab === "coupons" ? "border-sky-500 text-sky-400" : "border-transparent text-slate-400 hover:text-slate-200"}`}>
+            <Sparkles className="w-4 h-4" /> Cupones
           </button>
           <button
             onClick={() => setActiveTab("config")}
@@ -810,6 +828,10 @@ ${successData.magicLink}`
             {orderMessage && <div className="p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs">{orderMessage}</div>}
             <div className="space-y-3">{orders.filter((order) => order.status === "pending_review").map((order) => <div key={order.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"><div><p className="font-bold">{order.customer_name} <span className="text-sky-400 font-mono text-xs">{order.reference}</span></p><p className="text-sm text-slate-300">{order.customer_email} · {order.courses?.name || "Curso"}</p><p className="text-xs text-slate-500">{order.payment_method === "transfer" ? "Transferencia" : "Efectivo"}{order.payment_proof_path ? " · Con comprobante" : " · Declaró pago"}</p>{order.proof_url && <a href={order.proof_url} target="_blank" rel="noreferrer" className="text-xs text-sky-400">Ver comprobante</a>}</div><button onClick={() => void confirmOrder(order.id)} className="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg text-sm font-semibold">Confirmar y liberar</button></div>)}{!isLoadingOrders && orders.filter((order) => order.status === "pending_review").length === 0 && <p className="text-slate-400 text-sm">No hay pagos pendientes.</p>}</div>
           </div>
+        )}
+
+        {activeTab === "coupons" && (
+          <div className="max-w-xl space-y-6"><div><h2 className="text-xl font-bold text-white">Generar cupón</h2><p className="text-xs text-slate-400">El código se aplica en el checkout antes de que el alumno envíe su solicitud.</p></div><form onSubmit={createCoupon} className="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4"><label className="block text-sm">Nombre interno<input required value={couponName} onChange={(event) => setCouponName(event.target.value)} placeholder="Ej. Beca lanzamiento" className="mt-1 w-full bg-slate-950 border border-slate-700 rounded-lg p-3" /></label><div className="grid grid-cols-2 gap-3"><label className="text-sm">Descuento<select value={couponType} onChange={(event) => setCouponType(event.target.value)} className="mt-1 w-full bg-slate-950 border border-slate-700 rounded-lg p-3"><option value="percentage">Porcentaje (%)</option><option value="fixed">Monto fijo (PYG)</option></select></label><label className="text-sm">Valor<input required min="1" type="number" value={couponValue} onChange={(event) => setCouponValue(Number(event.target.value))} className="mt-1 w-full bg-slate-950 border border-slate-700 rounded-lg p-3" /></label></div><label className="block text-sm">Longitud del código<select value={couponLength} onChange={(event) => setCouponLength(Number(event.target.value))} className="mt-1 w-full bg-slate-950 border border-slate-700 rounded-lg p-3"><option value={4}>4 caracteres</option><option value={6}>6 caracteres</option></select></label><button className="bg-sky-600 hover:bg-sky-500 rounded-lg py-3 px-4 font-semibold">Generar cupón</button>{couponMessage && <p className="text-emerald-400 text-sm">{couponMessage}</p>}</form></div>
         )}
 
         {/* TAB 4: CONFIGURACION & VERCEL */}

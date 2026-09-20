@@ -3,6 +3,7 @@ import { getAdminSupabase } from "@/lib/supabase";
 
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "application/pdf"]);
 const MAX_PROOF_SIZE = 5 * 1024 * 1024;
+type Coupon = { id: string; code: string; discount_type: "percentage" | "fixed"; discount_value: number };
 
 function value(formData: FormData, field: string) {
   const item = formData.get(field);
@@ -20,6 +21,7 @@ export async function POST(request: NextRequest) {
     const email = value(formData, "email").toLowerCase();
     const phone = value(formData, "phone");
     const paymentMethod = value(formData, "payment_method");
+    const couponCode = value(formData, "coupon_code").toUpperCase();
     const proof = formData.get("payment_proof");
 
     if (!courseUuid || !name || !/^\S+@\S+\.\S+$/.test(email)) {
@@ -33,14 +35,24 @@ export async function POST(request: NextRequest) {
     }
 
     const { data: course, error: courseError } = await supabase
-      .from("courses").select("id").eq("course_uuid", courseUuid).eq("is_active", true).maybeSingle();
+      .from("courses").select("id, price_pyg").eq("course_uuid", courseUuid).eq("is_active", true).maybeSingle();
     if (courseError) throw courseError;
     if (!course) return NextResponse.json({ error: "El curso no está disponible." }, { status: 404 });
 
+    let coupon: Coupon | null = null;
+    if (couponCode) {
+      const { data } = await supabase.from("coupons").select("id, code, discount_type, discount_value").eq("code", couponCode).eq("is_active", true).maybeSingle();
+      coupon = data as Coupon | null;
+      if (!coupon) return NextResponse.json({ error: "El cupón no es válido o ya no está activo." }, { status: 400 });
+    }
+    const originalAmount = Number(course.price_pyg || 0);
+    const discountAmount = coupon ? Math.min(originalAmount, coupon.discount_type === "percentage" ? originalAmount * Number(coupon.discount_value) / 100 : Number(coupon.discount_value)) : 0;
     const reference = `CE-${crypto.randomUUID().replaceAll("-", "").slice(0, 8).toUpperCase()}`;
     const { data: order, error: orderError } = await supabase.from("orders").insert({
       reference, course_id: course.id, customer_name: name, customer_email: email,
-      customer_phone: phone || null, payment_method: paymentMethod,
+      customer_phone: phone || null, payment_method: paymentMethod, coupon_id: coupon?.id || null,
+      coupon_code: coupon?.code || null, amount_original: originalAmount, discount_amount: discountAmount,
+      amount_due: originalAmount - discountAmount,
     }).select("id, reference").single();
     if (orderError) throw orderError;
 
