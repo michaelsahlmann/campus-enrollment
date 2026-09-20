@@ -202,6 +202,11 @@ export class LearnHouseClient {
 
       if (!res.ok) {
         const errorText = await res.text();
+        if (res.status === 403 && errorText.includes("challenge-platform")) {
+          throw new Error(
+            "Cloudflare está bloqueando la API de LearnHouse. Configura una excepción para /api/v1/ antes de volver a sincronizar."
+          );
+        }
         throw new Error(`Error al listar cursos de LearnHouse (${res.status}): ${errorText}`);
       }
 
