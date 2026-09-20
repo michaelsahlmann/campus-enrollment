@@ -229,6 +229,10 @@ ${successData.magicLink}`
     }
   };
 
+  const copyCheckoutLink = (courseUuid: string) => {
+    copyToClipboard(`${window.location.origin}/checkout/${courseUuid}`, "link");
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans antialiased">
       {/* Top Banner / Navigation */}
@@ -772,6 +776,27 @@ ${successData.magicLink}`
                       <ExternalLink className="w-3.5 h-3.5" />
                       Ver curso en el Campus
                     </a>
+                    <div>
+                      <span className="block text-[11px] uppercase tracking-wider text-slate-500 font-semibold mb-1">
+                        Link de checkout para enviar:
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <a
+                          href={`/checkout/${course.course_uuid}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-emerald-400 hover:text-emerald-300 font-medium"
+                        >
+                          Abrir checkout
+                        </a>
+                        <button
+                          onClick={() => copyCheckoutLink(course.course_uuid)}
+                          className="text-xs text-sky-400 hover:text-sky-300 font-medium"
+                        >
+                          {copiedLink ? "¡Copiado!" : "Copiar link"}
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               ))}
