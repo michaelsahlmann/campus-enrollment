@@ -88,9 +88,23 @@ export async function POST() {
       if (upsertError) throw upsertError;
     }
 
+    const remoteCourseUuids = new Set(remoteCourses.map((course) => course.course_uuid));
+    const coursesToDeactivate = ((storedCourses || []) as StoredCourse[])
+      .filter((course) => !remoteCourseUuids.has(course.course_uuid))
+      .map((course) => course.course_uuid);
+
+    if (coursesToDeactivate.length > 0) {
+      const { error: deactivateError } = await supabase
+        .from("courses")
+        .update({ is_active: false })
+        .in("course_uuid", coursesToDeactivate);
+      if (deactivateError) throw deactivateError;
+    }
+
     return NextResponse.json({
       success: true,
       synced: coursesToUpsert.length,
+      deactivated: coursesToDeactivate.length,
       courses: coursesToUpsert,
     });
   } catch (error: unknown) {

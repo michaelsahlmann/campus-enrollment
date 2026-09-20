@@ -125,7 +125,12 @@ export default function CampusPortalPage() {
       const res = await fetch("/api/courses", { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "No se pudo sincronizar el catálogo.");
-      setCoursesMessage(`${data.synced} curso(s) sincronizado(s) desde LearnHouse.`);
+      const deactivated = Number(data.deactivated || 0);
+      setCoursesMessage(
+        `${data.synced} curso(s) sincronizado(s) desde LearnHouse.${
+          deactivated > 0 ? ` ${deactivated} curso(s) eliminado(s) del Campus fueron desactivados.` : ""
+        }`
+      );
       await fetchCourses();
     } catch (error: unknown) {
       setCoursesMessage(error instanceof Error ? error.message : "No se pudo sincronizar el catálogo.");
