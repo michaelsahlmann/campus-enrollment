@@ -1,18 +1,14 @@
 "use client";
 
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
-import { Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
+import { Lock, Mail, AlertCircle } from "lucide-react";
 import BrandLogo from "@/components/brand-logo";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const router = useRouter();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -22,13 +18,18 @@ export default function LoginPage() {
     try {
       const supabase = createSupabaseBrowserClient();
       if (!supabase) throw new Error("Supabase no está configurado.");
-      const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
+      const { error: authError } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          shouldCreateUser: false,
+        },
+      });
 
       if (!authError) {
-        router.push("/");
-        router.refresh();
+        setError("Te enviamos un enlace de acceso a tu correo.");
       } else {
-        setError("Correo o contraseña incorrectos.");
+        setError("No se pudo enviar el enlace de acceso.");
       }
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Error de conexión. Intenta de nuevo.");
@@ -76,43 +77,19 @@ export default function LoginPage() {
               <label htmlFor="admin-email-input" className="block text-[11px] font-medium uppercase tracking-wider text-zinc-400 mb-2">
                 Correo electrónico
               </label>
-              <input
-                id="admin-email-input"
-                type="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="email"
-                className="w-full px-4 py-3 apple-input rounded-xl text-white placeholder-zinc-600 text-sm"
-              />
-            </div>
-            <div>
-              <label
-                htmlFor="admin-password-input"
-                className="block text-[11px] font-medium uppercase tracking-wider text-zinc-400 mb-2"
-              >
-                Contraseña
-              </label>
               <div className="relative">
+                <Mail className="w-4 h-4 text-zinc-500 absolute left-3.5 top-3.5 pointer-events-none" />
                 <input
-                  id="admin-password-input"
-                  type={showPassword ? "text" : "password"}
+                  id="admin-email-input"
+                  type="email"
                   required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••••••"
-                  autoComplete="current-password"
-                  className="w-full px-4 py-3 pr-11 apple-input rounded-xl text-white placeholder-zinc-600 text-sm"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                  placeholder="michelsd12@gmail.com"
+                  className="w-full px-4 py-3 pl-10 apple-input rounded-xl text-white placeholder-zinc-600 text-sm"
                   autoFocus
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  aria-label={showPassword ? "Ocultar contraseña" : "Ver contraseña"}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition cursor-pointer p-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 rounded-lg"
-                >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </button>
               </div>
             </div>
 
@@ -128,16 +105,16 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              disabled={loading || !email || !password}
+              disabled={loading || !email}
               className="w-full py-3 px-4 rounded-xl bg-white hover:bg-zinc-100 active:scale-[0.99] text-zinc-950 font-semibold text-xs tracking-wide uppercase transition-all shadow-[0_4px_20px_rgba(255,255,255,0.12)] disabled:opacity-40 disabled:pointer-events-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
-              {loading ? "Verificando…" : "Ingresar al Panel"}
+              {loading ? "Enviando…" : "Enviar enlace de acceso"}
             </button>
           </form>
         </div>
 
         <p className="text-center text-[11px] text-zinc-600 font-medium">
-          Acceso protegido por Supabase Auth
+          Acceso protegido por Magic Link
         </p>
       </div>
     </main>

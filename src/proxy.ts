@@ -4,6 +4,7 @@ import { createServerClient } from "@supabase/ssr";
 function isPublicPath(pathname: string) {
   return (
     pathname === "/login" ||
+    pathname === "/auth/callback" ||
     pathname.startsWith("/checkout/") ||
     pathname === "/api/checkout/orders" ||
     pathname === "/api/checkout/coupons" ||
@@ -24,7 +25,8 @@ export function proxy(req: NextRequest) {
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!supabaseUrl || !supabaseAnonKey) {
+  const adminEmail = process.env.ADMIN_EMAIL?.trim().toLowerCase();
+  if (!supabaseUrl || !supabaseAnonKey || !adminEmail) {
     const loginUrl = req.nextUrl.clone();
     loginUrl.pathname = "/login";
     return NextResponse.redirect(loginUrl);
@@ -42,7 +44,7 @@ export function proxy(req: NextRequest) {
   });
 
   return supabase.auth.getClaims().then(({ data }) => {
-    if (data?.claims) return response;
+    if (data?.claims?.email?.toLowerCase() === adminEmail) return response;
     const loginUrl = req.nextUrl.clone();
     loginUrl.pathname = "/login";
     return NextResponse.redirect(loginUrl);
