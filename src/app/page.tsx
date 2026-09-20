@@ -16,8 +16,25 @@ import {
   Sparkles,
   RefreshCw,
   AlertCircle,
+  CreditCard,
+  Link2,
+  X,
+  Eye,
 } from "lucide-react";
 import { DEFAULT_COURSES, CourseItem } from "@/lib/courses";
+
+interface CheckoutItem {
+  id: string;
+  slug: string;
+  title: string;
+  price_pyg: number;
+  is_active: boolean;
+  created_at?: string;
+  courses?: {
+    name: string;
+    course_uuid?: string;
+  };
+}
 
 interface StudentEnrollmentItem {
   id: string;
@@ -52,7 +69,7 @@ interface OrderItem {
 
 export default function CampusPortalPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"form" | "students" | "courses" | "orders" | "coupons" | "config">("form");
+  const [activeTab, setActiveTab] = useState<"form" | "students" | "courses" | "checkouts" | "orders" | "coupons" | "config">("form");
 
   // Form State
   const [name, setName] = useState("");
@@ -90,6 +107,15 @@ export default function CampusPortalPage() {
   const [couponValue, setCouponValue] = useState(10);
   const [couponLength, setCouponLength] = useState(6);
   const [couponMessage, setCouponMessage] = useState<string | null>(null);
+
+  // Checkouts State
+  const [checkouts, setCheckouts] = useState<CheckoutItem[]>([]);
+  const [isLoadingCheckouts, setIsLoadingCheckouts] = useState(false);
+  const [checkoutTitle, setCheckoutTitle] = useState("");
+  const [checkoutCourseId, setCheckoutCourseId] = useState("");
+  const [checkoutPrice, setCheckoutPrice] = useState<number>(1500000);
+  const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
+  const [previewCheckoutSlug, setPreviewCheckoutSlug] = useState<string | null>(null);
 
   // Load students
   const fetchStudents = async () => {
@@ -186,6 +212,66 @@ export default function CampusPortalPage() {
       if (!response.ok) throw new Error(data.error || "No se pudo crear el cupón.");
       setCouponMessage(`Cupón creado: ${data.coupon.code}`); setCouponName("");
     } catch (cause: unknown) { setCouponMessage(cause instanceof Error ? cause.message : "No se pudo crear el cupón."); }
+  };
+
+  const fetchCheckouts = async () => {
+    setIsLoadingCheckouts(true);
+    try {
+      const res = await fetch("/api/checkouts");
+      const data = await res.json();
+      if (data.checkouts) {
+        setCheckouts(data.checkouts);
+      }
+    } catch (err: unknown) {
+      console.error(err);
+    } finally {
+      setIsLoadingCheckouts(false);
+    }
+  };
+
+  const createCheckoutLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCheckoutMessage(null);
+    try {
+      const targetCourse = courses.find((c) => c.id === checkoutCourseId || c.course_uuid === checkoutCourseId) || courses[0];
+      const res = await fetch("/api/checkouts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: checkoutTitle,
+          courseId: targetCourse?.id || targetCourse?.course_uuid || "",
+          pricePyg: checkoutPrice,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo crear el checkout.");
+      setCheckoutMessage(`Checkout creado con éxito: /checkout/${data.checkout.slug}`);
+      setCheckoutTitle("");
+      await fetchCheckouts();
+    } catch (err: unknown) {
+      setCheckoutMessage(err instanceof Error ? err.message : "Error al crear checkout.");
+    }
+  };
+
+  const toggleCheckoutActive = async (item: CheckoutItem) => {
+    try {
+      const res = await fetch(`/api/checkouts/${item.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: item.title,
+          pricePyg: item.price_pyg,
+          isActive: !item.is_active,
+        }),
+      });
+      if (res.ok) {
+        setCheckouts((prev) =>
+          prev.map((c) => (c.id === item.id ? { ...c, is_active: !c.is_active } : c))
+        );
+      }
+    } catch (err: unknown) {
+      console.error(err);
+    }
   };
 
   const handleEnrollSubmit = async (e: React.FormEvent) => {
@@ -357,15 +443,25 @@ ${successData.magicLink}`
             <BookOpen className="w-4 h-4" />
             Cursos & Mapeo
           </button>
-          <button onClick={() => { setActiveTab("orders"); void fetchOrders(); }} className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition ${activeTab === "orders" ? "border-sky-500 text-sky-400" : "border-transparent text-slate-400 hover:text-slate-200"}`}>
+          <button onClick={() => { setActiveTab("orders"); void fetchOrders(); }} className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition cursor-pointer ${activeTab === "orders" ? "border-sky-500 text-sky-400" : "border-transparent text-slate-400 hover:text-slate-200"}`}>
             <CheckCircle2 className="w-4 h-4" /> Pagos pendientes
           </button>
-          <button onClick={() => setActiveTab("coupons")} className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition ${activeTab === "coupons" ? "border-sky-500 text-sky-400" : "border-transparent text-slate-400 hover:text-slate-200"}`}>
+          <button onClick={() => setActiveTab("coupons")} className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition cursor-pointer ${activeTab === "coupons" ? "border-sky-500 text-sky-400" : "border-transparent text-slate-400 hover:text-slate-200"}`}>
             <Sparkles className="w-4 h-4" /> Cupones
           </button>
-          <a href="/checkouts" className="flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 border-transparent text-emerald-400 hover:text-emerald-300 hover:border-emerald-500 transition">
-            <ExternalLink className="w-4 h-4" /> Checkouts
-          </a>
+          <button
+            onClick={() => {
+              setActiveTab("checkouts");
+              void fetchCheckouts();
+            }}
+            className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition cursor-pointer ${
+              activeTab === "checkouts"
+                ? "border-sky-500 text-sky-400"
+                : "border-transparent text-slate-400 hover:text-slate-200"
+            }`}
+          >
+            <CreditCard className="w-4 h-4" /> Checkouts
+          </button>
           <button
             onClick={() => setActiveTab("config")}
             className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition ${
@@ -410,9 +506,14 @@ ${successData.magicLink}`
 
                 <form onSubmit={handleEnrollSubmit} className="space-y-5">
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-                      Nombre y Apellido del Alumno
-                    </label>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+                        Nombre y Apellido del Alumno
+                      </label>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-500/20 text-sky-400 border border-sky-500/30">
+                        OBLIGATORIO
+                      </span>
+                    </div>
                     <input
                       type="text"
                       required
@@ -424,9 +525,14 @@ ${successData.magicLink}`
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-                      Correo Electrónico (Login del Alumno)
-                    </label>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+                        Correo Electrónico (Login del Alumno)
+                      </label>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-500/20 text-sky-400 border border-sky-500/30">
+                        OBLIGATORIO
+                      </span>
+                    </div>
                     <input
                       type="email"
                       required
@@ -438,9 +544,14 @@ ${successData.magicLink}`
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-                      Teléfono o WhatsApp (Opcional)
-                    </label>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-semibold uppercase tracking-wider text-slate-400">
+                        Teléfono o WhatsApp
+                      </label>
+                      <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        OPCIONAL · ACTIVA ENVÍO DE WHATSAPP
+                      </span>
+                    </div>
                     <input
                       type="text"
                       placeholder="+595 981 123456"
@@ -451,9 +562,26 @@ ${successData.magicLink}`
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
-                      Curso a Habilitar
-                    </label>
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-xs font-semibold uppercase tracking-wider text-slate-300">
+                        Curso a Habilitar
+                      </label>
+                      <div className="flex items-center gap-2">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-500/20 text-sky-400 border border-sky-500/30">
+                          OBLIGATORIO
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => void syncCourses()}
+                          disabled={isSyncingCourses}
+                          className="text-[11px] text-sky-400 hover:text-sky-300 flex items-center gap-1 cursor-pointer"
+                          title="Sincronizar cursos desde LearnHouse"
+                        >
+                          <RefreshCw className={`w-3 h-3 ${isSyncingCourses ? "animate-spin" : ""}`} />
+                          Sincronizar
+                        </button>
+                      </div>
+                    </div>
                     <select
                       value={selectedCourseUuid}
                       onChange={(e) => {
@@ -643,25 +771,84 @@ ${successData.magicLink}`
                   </a>
                 </div>
               ) : (
-                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-sm text-slate-400 space-y-4">
-                  <h3 className="text-white font-bold flex items-center gap-2">
-                    <ShieldCheck className="w-5 h-5 text-sky-400" />
-                    Cómo funciona la integración
-                  </h3>
-                  <ol className="list-decimal list-inside space-y-2 text-xs text-slate-300 leading-relaxed">
-                    <li>
-                      Al presionar <strong>&quot;Habilitar Alumno&quot;</strong>, el servidor llama directamente a la API de tu contenedor LearnHouse en <code>campus.michaelsahlmann.com</code>.
-                    </li>
-                    <li>
-                      Verifica si el alumno ya tiene usuario en tu organización <code>default</code>. Si no, lo crea con correo pre-verificado.
-                    </li>
-                    <li>
-                      Lo matricula en el curso seleccionado y genera un <strong>Magic Link de inicio de sesión de 1 clic</strong> válido por 15 minutos para enviarlo de inmediato.
-                    </li>
-                    <li>
-                      Si tienes Supabase conectado, guarda el registro del pago, método y estado para tus reportes contables.
-                    </li>
-                  </ol>
+                <div className="space-y-4">
+                  {/* Tarjeta de Previsualización en Vivo */}
+                  <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+                      <h3 className="text-white font-bold text-sm flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-sky-400" />
+                        Previsualización del Alta en LearnHouse
+                      </h3>
+                      <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20">
+                        En vivo
+                      </span>
+                    </div>
+
+                    <div className="bg-slate-950/80 rounded-xl p-4 border border-slate-800 text-xs space-y-2.5">
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400">Alumno:</span>
+                        <span className="font-semibold text-white truncate max-w-[200px]">
+                          {name.trim() || <span className="text-slate-600 italic">Escribe el nombre...</span>}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400">Email:</span>
+                        <span className="font-mono text-sky-400 truncate max-w-[200px]">
+                          {email.trim() || <span className="text-slate-600 italic">Escribe el correo...</span>}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400">Usuario LearnHouse:</span>
+                        <span className="font-mono text-slate-300 truncate max-w-[200px]">
+                          {email.trim() ? (
+                            `${email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "") || "alumno"}_...`
+                          ) : (
+                            <span className="text-slate-600 italic">Automático</span>
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400">Rol asignado:</span>
+                        <span className="text-emerald-400 font-semibold">Estudiante (Rol 4)</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400">Estado de cuenta:</span>
+                        <span className="text-emerald-400 font-semibold">Verificada inmediatamente</span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400">Curso:</span>
+                        <span className="text-white font-medium text-right truncate max-w-[200px]">
+                          {courses.find((c) => c.course_uuid === selectedCourseUuid)?.name || "Seleccionar..."}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-slate-400">Invitación:</span>
+                        <span className="text-sky-400 font-medium">Magic Link + WhatsApp directo</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Cómo funciona */}
+                  <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-sm text-slate-400 space-y-4">
+                    <h3 className="text-white font-bold flex items-center gap-2">
+                      <ShieldCheck className="w-5 h-5 text-sky-400" />
+                      Cómo funciona la integración
+                    </h3>
+                    <ol className="list-decimal list-inside space-y-2 text-xs text-slate-300 leading-relaxed">
+                      <li>
+                        Al presionar <strong>&quot;Habilitar Alumno&quot;</strong>, el servidor llama directamente a la API de LearnHouse en <code>campus.michaelsahlmann.com</code>.
+                      </li>
+                      <li>
+                        Verifica si el alumno ya existe en tu organización <code>default</code>. Si no, lo crea con correo pre-verificado.
+                      </li>
+                      <li>
+                        Lo matricula en el curso y genera un <strong>Magic Link de acceso de 1 clic</strong> listo para enviar por WhatsApp.
+                      </li>
+                      <li>
+                        Si tienes Supabase conectado, guarda el registro del alumno y el pago en tu base de datos.
+                      </li>
+                    </ol>
+                  </div>
                 </div>
               )}
             </div>
@@ -864,17 +1051,19 @@ ${successData.magicLink}`
                         Link de checkout para enviar:
                       </span>
                       <div className="flex items-center gap-2">
-                        <a
-                          href={`/checkout/${course.course_uuid}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-xs text-emerald-400 hover:text-emerald-300 font-medium"
-                        >
-                          Abrir checkout
-                        </a>
                         <button
+                          type="button"
+                          onClick={() => setPreviewCheckoutSlug(course.course_uuid)}
+                          className="text-xs text-emerald-400 hover:text-emerald-300 font-medium flex items-center gap-1 cursor-pointer"
+                        >
+                          <Eye className="w-3.5 h-3.5" />
+                          Previsualizar aquí
+                        </button>
+                        <span className="text-slate-600">·</span>
+                        <button
+                          type="button"
                           onClick={() => copyCheckoutLink(course.course_uuid)}
-                          className="text-xs text-sky-400 hover:text-sky-300 font-medium"
+                          className="text-xs text-sky-400 hover:text-sky-300 font-medium cursor-pointer"
                         >
                           {copiedLink ? "¡Copiado!" : "Copiar link"}
                         </button>
@@ -883,6 +1072,178 @@ ${successData.magicLink}`
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* TAB: CHECKOUTS INTEGRADOS */}
+        {activeTab === "checkouts" && (
+          <div className="space-y-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <CreditCard className="w-5 h-5 text-emerald-400" />
+                  Links de Checkout para Alumnos
+                </h2>
+                <p className="text-xs text-slate-400">
+                  Crea y gestiona páginas de pago simples para tus cursos. Puedes previsualizarlas directamente sin salir del panel.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => void fetchCheckouts()}
+                disabled={isLoadingCheckouts}
+                className="flex items-center gap-2 px-3 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white rounded-xl text-xs font-semibold transition cursor-pointer"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isLoadingCheckouts ? "animate-spin" : ""}`} />
+                {isLoadingCheckouts ? "Cargando..." : "Actualizar"}
+              </button>
+            </div>
+
+            {checkoutMessage && (
+              <div className="p-3 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 text-xs">
+                {checkoutMessage}
+              </div>
+            )}
+
+            {/* Crear nuevo checkout */}
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+              <h3 className="font-bold text-white text-sm mb-4 flex items-center gap-2">
+                <Link2 className="w-4 h-4 text-emerald-400" />
+                Crear Nuevo Link de Checkout
+              </h3>
+              <form onSubmit={createCheckoutLink} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                      Título / Referencia
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ej. Promoción Lanzamiento"
+                      value={checkoutTitle}
+                      onChange={(e) => setCheckoutTitle(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                      Curso Asociado
+                    </label>
+                    <select
+                      value={checkoutCourseId || (courses[0]?.id || courses[0]?.course_uuid || "")}
+                      onChange={(e) => setCheckoutCourseId(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white focus:outline-none focus:border-emerald-500 text-sm cursor-pointer"
+                    >
+                      {courses.map((course) => (
+                        <option key={course.course_uuid} value={course.id || course.course_uuid}>
+                          {course.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">
+                      Precio (PYG)
+                    </label>
+                    <input
+                      type="number"
+                      required
+                      min={0}
+                      step={10000}
+                      value={checkoutPrice}
+                      onChange={(e) => setCheckoutPrice(Number(e.target.value))}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 text-sm"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <button
+                    type="submit"
+                    className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-emerald-600/20 cursor-pointer flex items-center gap-2"
+                  >
+                    <CreditCard className="w-4 h-4" />
+                    Generar Link de Checkout
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Lista de Checkouts Existentes */}
+            <div className="space-y-3">
+              <h3 className="font-bold text-white text-sm">Links Activos</h3>
+              {isLoadingCheckouts ? (
+                <div className="text-slate-400 text-xs py-4 text-center">Cargando checkouts...</div>
+              ) : checkouts.length === 0 ? (
+                <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-center text-slate-400 text-xs">
+                  Aún no has generado checkouts personalizados. También puedes previsualizar los checkouts directos por curso en la pestaña &quot;Cursos & Mapeo&quot;.
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {checkouts.map((item) => (
+                    <div
+                      key={item.id}
+                      className="bg-slate-900 border border-slate-800 rounded-2xl p-5 flex flex-col justify-between space-y-4"
+                    >
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`w-2 h-2 rounded-full ${
+                                item.is_active ? "bg-emerald-400" : "bg-slate-600"
+                              }`}
+                            />
+                            <h4 className="font-bold text-white text-sm">{item.title}</h4>
+                          </div>
+                          <p className="text-xs text-slate-400 mt-1">
+                            {item.courses?.name || "Curso asociado"}
+                          </p>
+                        </div>
+                        <span className="text-xs font-bold text-emerald-400 font-mono">
+                          {item.price_pyg.toLocaleString()} PYG
+                        </span>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-3 border-t border-slate-800/80 text-xs">
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setPreviewCheckoutSlug(item.slug)}
+                            className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-sky-400 font-medium flex items-center gap-1.5 transition cursor-pointer"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            Previsualizar aquí
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => copyCheckoutLink(item.slug)}
+                            className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium flex items-center gap-1.5 transition cursor-pointer"
+                          >
+                            <Copy className="w-3.5 h-3.5" />
+                            Copiar link
+                          </button>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => void toggleCheckoutActive(item)}
+                          className={`text-[11px] font-semibold transition cursor-pointer ${
+                            item.is_active
+                              ? "text-slate-500 hover:text-amber-400"
+                              : "text-emerald-400 hover:text-emerald-300"
+                          }`}
+                        >
+                          {item.is_active ? "Desactivar" : "Activar"}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -955,6 +1316,54 @@ ${successData.magicLink}`
                   <li>Lo matricula en el curso vinculado.</li>
                   <li>Guarda el registro contable en Supabase.</li>
                 </ul>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL DE PREVISUALIZACION DE CHECKOUT EMBEBIDO */}
+        {previewCheckoutSlug && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+            <div className="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/80">
+                <div className="flex items-center gap-3">
+                  <span className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400">
+                    <CreditCard className="w-5 h-5" />
+                  </span>
+                  <div>
+                    <h3 className="font-bold text-white text-base">Vista Previa del Checkout</h3>
+                    <p className="text-xs text-slate-400 font-mono">
+                      /checkout/{previewCheckoutSlug}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => copyCheckoutLink(previewCheckoutSlug)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-slate-300 transition cursor-pointer"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    {copiedLink ? "¡Copiado!" : "Copiar link público"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPreviewCheckoutSlug(null)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+                    title="Cerrar vista previa"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex-1 p-4 bg-slate-950 overflow-hidden flex flex-col">
+                <iframe
+                  src={`/checkout/${previewCheckoutSlug}`}
+                  title="Checkout Preview"
+                  className="w-full h-[650px] rounded-xl border border-slate-800 bg-slate-950"
+                />
               </div>
             </div>
           </div>
