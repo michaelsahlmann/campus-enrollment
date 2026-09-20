@@ -26,6 +26,7 @@ import {
   Menu,
   LogOut,
   Building2,
+  Bell,
 } from "lucide-react";
 import BrandLogo from "@/components/brand-logo";
 import { DEFAULT_COURSES, CourseItem } from "@/lib/courses";
@@ -187,6 +188,7 @@ export default function CampusPortalPage() {
   const [orders, setOrders] = useState<OrderItem[]>([]);
   const [isLoadingOrders, setIsLoadingOrders] = useState(false);
   const [orderMessage, setOrderMessage] = useState<string | null>(null);
+  const [newOrderAlert, setNewOrderAlert] = useState<OrderItem | null>(null);
   const [couponName, setCouponName] = useState("");
   const [couponType, setCouponType] = useState("percentage");
   const [couponValue, setCouponValue] = useState(10);
@@ -706,6 +708,29 @@ ${confirmedOrderCredentials.magicLink}
     });
   }, []);
 
+  useEffect(() => {
+    const supabase = createSupabaseBrowserClient();
+    if (!supabase) return;
+    const channel = supabase.channel("admin-order-alerts").on(
+      "postgres_changes",
+      { event: "INSERT", schema: "public", table: "orders", filter: "status=eq.pending_review" },
+      (payload) => {
+        const order = payload.new as OrderItem;
+        setNewOrderAlert(order);
+        setOrders((current) => current.some((item) => item.id === order.id) ? current : [order, ...current]);
+        void fetchOrders();
+        if (Notification.permission === "granted") {
+          new Notification("Nueva inscripción pendiente", { body: `${order.customer_name} completó el checkout.` });
+        }
+      }
+    ).subscribe();
+    return () => { void supabase.removeChannel(channel); };
+  }, []);
+
+  const enableBrowserAlerts = async () => {
+    if ("Notification" in window) await Notification.requestPermission();
+  };
+
   const pendingOrdersCount = orders.filter((o) => o.status === "pending_review").length;
 
   const navItems = [
@@ -720,6 +745,18 @@ ${confirmedOrderCredentials.magicLink}
 
   return (
     <div className="min-h-screen bg-[#050507] text-[#F4F4F6] font-sans antialiased flex flex-col lg:flex-row relative selection:bg-sky-500/20 selection:text-sky-200">
+      {newOrderAlert && (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/75 p-5 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="new-order-title">
+          <section className="w-full max-w-xl overflow-hidden rounded-[2rem] border border-emerald-400/30 bg-[#0c1117] shadow-[0_28px_90px_rgba(16,185,129,0.22)]">
+            <div className="bg-gradient-to-r from-emerald-400 to-cyan-300 p-1" />
+            <div className="space-y-6 p-8 sm:p-10">
+              <div className="flex items-start justify-between gap-5"><div><p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-300">En tiempo real</p><h2 id="new-order-title" className="mt-2 text-3xl font-bold text-white">Nueva inscripción</h2></div><Bell className="h-8 w-8 text-emerald-300" /></div>
+              <div className="rounded-2xl border border-white/10 bg-black/30 p-5 text-sm"><p className="font-semibold text-white">{newOrderAlert.customer_name}</p><p className="mt-1 text-zinc-400">{newOrderAlert.customer_email}</p><p className="mt-4 font-mono text-emerald-300">#{newOrderAlert.reference}</p></div>
+              <div className="flex flex-col gap-3 sm:flex-row"><button type="button" onClick={() => { setNewOrderAlert(null); switchTab("orders"); }} className="flex-1 rounded-xl bg-emerald-400 px-5 py-3 text-sm font-bold text-black">Revisar pago</button><button type="button" onClick={() => setNewOrderAlert(null)} className="rounded-xl border border-white/15 px-5 py-3 text-sm font-semibold text-white">Más tarde</button></div>
+            </div>
+          </section>
+        </div>
+      )}
       {/* Ambient top luminance */}
       <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[1100px] h-[350px] bg-gradient-to-b from-sky-500/[0.04] via-emerald-500/[0.02] to-transparent blur-3xl pointer-events-none -z-10" />
 
@@ -1293,6 +1330,7 @@ ${confirmedOrderCredentials.magicLink}
                 <RefreshCw className={`w-3.5 h-3.5 ${isLoadingStudents ? "animate-spin" : ""}`} />
                 Actualizar
               </button>
+              <button type="button" onClick={() => void enableBrowserAlerts()} className="px-3.5 py-2 bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-white rounded-xl text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"><Bell className="w-3.5 h-3.5" />Activar alertas</button>
             </div>
 
             {!supabaseConfigured && (
