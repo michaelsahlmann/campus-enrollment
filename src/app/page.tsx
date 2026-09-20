@@ -44,9 +44,15 @@ interface StudentItem {
   enrollments?: StudentEnrollmentItem[];
 }
 
+interface OrderItem {
+  id: string; reference: string; customer_name: string; customer_email: string;
+  payment_method: string; status: string; payment_proof_path?: string | null; proof_url?: string | null; created_at: string;
+  courses?: { name: string; course_uuid: string };
+}
+
 export default function CampusPortalPage() {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<"form" | "students" | "courses" | "config">("form");
+  const [activeTab, setActiveTab] = useState<"form" | "students" | "courses" | "orders" | "config">("form");
 
   // Form State
   const [name, setName] = useState("");
@@ -76,6 +82,9 @@ export default function CampusPortalPage() {
   const [isLoadingCourses, setIsLoadingCourses] = useState(false);
   const [isSyncingCourses, setIsSyncingCourses] = useState(false);
   const [coursesMessage, setCoursesMessage] = useState<string | null>(null);
+  const [orders, setOrders] = useState<OrderItem[]>([]);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
+  const [orderMessage, setOrderMessage] = useState<string | null>(null);
 
   // Load students
   const fetchStudents = async () => {
@@ -136,6 +145,31 @@ export default function CampusPortalPage() {
       setCoursesMessage(error instanceof Error ? error.message : "No se pudo sincronizar el catálogo.");
     } finally {
       setIsSyncingCourses(false);
+    }
+  };
+
+  const fetchOrders = async () => {
+    setIsLoadingOrders(true);
+    try {
+      const response = await fetch("/api/orders");
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "No se pudieron cargar las órdenes.");
+      setOrders(data.orders || []);
+    } catch (cause: unknown) {
+      setOrderMessage(cause instanceof Error ? cause.message : "No se pudieron cargar las órdenes.");
+    } finally { setIsLoadingOrders(false); }
+  };
+
+  const confirmOrder = async (orderId: string) => {
+    setOrderMessage(null);
+    try {
+      const response = await fetch(`/api/orders/${orderId}/confirm`, { method: "POST" });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "No se pudo confirmar la orden.");
+      setOrderMessage(data.alreadyConfirmed ? "Esta orden ya estaba confirmada." : "Pago confirmado y acceso liberado.");
+      await fetchOrders();
+    } catch (cause: unknown) {
+      setOrderMessage(cause instanceof Error ? cause.message : "No se pudo confirmar la orden.");
     }
   };
 
@@ -279,6 +313,9 @@ ${successData.magicLink}`
           >
             <BookOpen className="w-4 h-4" />
             Cursos & Mapeo
+          </button>
+          <button onClick={() => { setActiveTab("orders"); void fetchOrders(); }} className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition ${activeTab === "orders" ? "border-sky-500 text-sky-400" : "border-transparent text-slate-400 hover:text-slate-200"}`}>
+            <CheckCircle2 className="w-4 h-4" /> Pagos pendientes
           </button>
           <button
             onClick={() => setActiveTab("config")}
@@ -739,6 +776,14 @@ ${successData.magicLink}`
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {activeTab === "orders" && (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between"><div><h2 className="text-xl font-bold text-white">Pagos pendientes</h2><p className="text-xs text-slate-400">Confirmá un pago para liberar automáticamente el acceso.</p></div><button onClick={() => void fetchOrders()} disabled={isLoadingOrders} className="px-3 py-2 bg-slate-800 rounded-xl text-xs">{isLoadingOrders ? "Actualizando..." : "Actualizar"}</button></div>
+            {orderMessage && <div className="p-3 rounded-xl bg-slate-900 border border-slate-700 text-xs">{orderMessage}</div>}
+            <div className="space-y-3">{orders.filter((order) => order.status === "pending_review").map((order) => <div key={order.id} className="bg-slate-900 border border-slate-800 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"><div><p className="font-bold">{order.customer_name} <span className="text-sky-400 font-mono text-xs">{order.reference}</span></p><p className="text-sm text-slate-300">{order.customer_email} · {order.courses?.name || "Curso"}</p><p className="text-xs text-slate-500">{order.payment_method === "transfer" ? "Transferencia" : "Efectivo"}{order.payment_proof_path ? " · Con comprobante" : " · Declaró pago"}</p>{order.proof_url && <a href={order.proof_url} target="_blank" rel="noreferrer" className="text-xs text-sky-400">Ver comprobante</a>}</div><button onClick={() => void confirmOrder(order.id)} className="bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg text-sm font-semibold">Confirmar y liberar</button></div>)}{!isLoadingOrders && orders.filter((order) => order.status === "pending_review").length === 0 && <p className="text-slate-400 text-sm">No hay pagos pendientes.</p>}</div>
           </div>
         )}
 
