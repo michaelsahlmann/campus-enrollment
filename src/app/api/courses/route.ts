@@ -71,13 +71,14 @@ export async function POST() {
     );
     const coursesToUpsert = remoteCourses.map((course: LearnHouseCourse) => {
       const stored = storedByUuid.get(course.course_uuid);
+      const defaultCourse = DEFAULT_COURSES.find((c) => c.course_uuid === course.course_uuid);
       return {
         course_uuid: course.course_uuid,
         name: course.name,
         description: course.description,
         is_active: course.published,
-        price_pyg: stored?.price_pyg ?? 0,
-        price_usd: stored?.price_usd ?? 0,
+        price_pyg: stored?.price_pyg ?? defaultCourse?.price_pyg ?? 0,
+        price_usd: stored?.price_usd ?? defaultCourse?.price_usd ?? 0,
       };
     });
 

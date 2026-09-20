@@ -1,10 +1,15 @@
-const LEARNHOUSE_API_URL = (
-  process.env.LEARNHOUSE_API_URL || "https://campus.michaelsahlmann.com"
-).replace(/\/$/, "");
+function sanitizeBaseUrl(url?: string): string {
+  if (!url) return "https://campus.michaelsahlmann.com";
+  const trimmed = url.trim();
+  const match = trimmed.match(/https?:\/\/[^\s\]\)]+/);
+  return (match ? match[0] : trimmed).replace(/\/$/, "");
+}
 
-const LEARNHOUSE_ORG_SLUG = process.env.LEARNHOUSE_ORG_SLUG || "default";
+const LEARNHOUSE_API_URL = sanitizeBaseUrl(process.env.LEARNHOUSE_API_URL);
 
-const LEARNHOUSE_API_TOKEN = process.env.LEARNHOUSE_API_TOKEN;
+const LEARNHOUSE_ORG_SLUG = (process.env.LEARNHOUSE_ORG_SLUG || "default").trim();
+
+const LEARNHOUSE_API_TOKEN = process.env.LEARNHOUSE_API_TOKEN?.trim();
 
 export interface LearnHouseCourse {
   id: number;
@@ -184,7 +189,20 @@ export class LearnHouseClient {
     }
 
     const data = (await res.json()) as LearnHouseMagicLinkResponse;
-    return data.url || `${this.baseUrl}/courses/${courseUuid}`;
+    if (data.token) {
+      return `${this.baseUrl}/api/v1/admin/${this.orgSlug}/auth/magic-consume?token=${data.token}`;
+    }
+
+    if (data.url) {
+      try {
+        const parsed = new URL(data.url);
+        return `${this.baseUrl}${parsed.pathname}${parsed.search}`;
+      } catch {
+        return data.url;
+      }
+    }
+
+    return `${this.baseUrl}/courses/${courseUuid}`;
   }
 
   /** Lista el catálogo de la organización para sincronizarlo localmente. */

@@ -68,7 +68,7 @@ export default function CampusPortalPage() {
 
   // Success Modal State
   const [successData, setSuccessData] = useState<{
-    student: { id: number; name: string; email: string; isNewUser: boolean };
+    student: { id: number; name: string; email: string; phone?: string; isNewUser: boolean };
     course: { uuid: string; name: string };
     magicLink: string;
   } | null>(null);
@@ -246,6 +246,30 @@ ${successData.magicLink}`
 
   const copyCheckoutLink = (courseUuid: string) => {
     copyToClipboard(`${window.location.origin}/checkout/${courseUuid}`, "link");
+  };
+
+  const handleGenerateStudentMagicLink = async (st: StudentItem, courseUuid: string) => {
+    try {
+      setIsSubmitting(true);
+      const res = await fetch("/api/enroll", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: st.name,
+          email: st.email,
+          phone: st.phone || "",
+          course_uuid: courseUuid,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "No se pudo generar el enlace");
+      setSuccessData(json.data);
+      setActiveTab("form");
+    } catch (error: unknown) {
+      alert(error instanceof Error ? error.message : "Error al generar enlace");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -583,13 +607,26 @@ ${successData.magicLink}`
                         <MessageSquare className="w-4 h-4 text-emerald-400" />
                         Mensaje para WhatsApp:
                       </span>
-                      <button
-                        onClick={() => copyToClipboard(whatsappMessage, "msg")}
-                        className="text-xs text-sky-400 hover:text-sky-300 flex items-center gap-1 font-medium"
-                      >
-                        <Copy className="w-3 h-3" />
-                        {copiedMsg ? "¡Copiado!" : "Copiar Texto"}
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {successData.student.phone && (
+                          <a
+                            href={`https://wa.me/${successData.student.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(whatsappMessage)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs bg-emerald-600 hover:bg-emerald-500 text-white px-2.5 py-1 rounded-md flex items-center gap-1 font-medium transition"
+                          >
+                            <MessageSquare className="w-3 h-3" />
+                            Enviar por WhatsApp
+                          </a>
+                        )}
+                        <button
+                          onClick={() => copyToClipboard(whatsappMessage, "msg")}
+                          className="text-xs text-sky-400 hover:text-sky-300 flex items-center gap-1 font-medium cursor-pointer"
+                        >
+                          <Copy className="w-3 h-3" />
+                          {copiedMsg ? "¡Copiado!" : "Copiar Texto"}
+                        </button>
+                      </div>
                     </div>
                     <p className="text-xs text-slate-300 bg-slate-950 p-3 rounded-lg border border-slate-800/80 font-mono whitespace-pre-wrap leading-relaxed">
                       {whatsappMessage}
@@ -672,6 +709,7 @@ ${successData.magicLink}`
                       <th className="py-3 px-4">Correo</th>
                       <th className="py-3 px-4">ID LearnHouse</th>
                       <th className="py-3 px-4">Cursos Matriculados</th>
+                      <th className="py-3 px-4">Acceso / Invitación</th>
                       <th className="py-3 px-4">Fecha</th>
                     </tr>
                   </thead>
@@ -700,6 +738,30 @@ ${successData.magicLink}`
                               <span className="text-slate-500">Sin cursos</span>
                             )}
                           </td>
+                          <td className="py-3 px-4">
+                            {st.enrollments && st.enrollments.length > 0 ? (
+                              <div className="space-y-1">
+                                {st.enrollments.map((en) => (
+                                  <button
+                                    key={en.id}
+                                    onClick={() =>
+                                      void handleGenerateStudentMagicLink(
+                                        st,
+                                        en.courses?.course_uuid || selectedCourseUuid
+                                      )
+                                    }
+                                    disabled={isSubmitting}
+                                    className="inline-flex items-center gap-1 text-[11px] text-sky-400 hover:text-sky-300 font-medium px-2 py-1 bg-sky-950/60 hover:bg-sky-900/60 border border-sky-800/60 rounded cursor-pointer disabled:opacity-50 transition"
+                                  >
+                                    <Sparkles className="w-3 h-3 text-sky-400" />
+                                    Generar Magic Link
+                                  </button>
+                                ))}
+                              </div>
+                            ) : (
+                              <span className="text-slate-500">—</span>
+                            )}
+                          </td>
                           <td className="py-3 px-4 text-slate-500">
                             {new Date(st.created_at).toLocaleDateString()}
                           </td>
@@ -707,7 +769,7 @@ ${successData.magicLink}`
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={5} className="py-8 text-center text-slate-500">
+                        <td colSpan={6} className="py-8 text-center text-slate-500">
                           {isLoadingStudents
                             ? "Cargando alumnos desde Supabase..."
                             : "No se encontraron alumnos registrados en la base de datos todavía."}

@@ -60,27 +60,30 @@ export async function POST(req: NextRequest) {
           // Buscar el curso en Supabase o crear vínculo
           const { data: courseData } = await supabase
             .from("courses")
-            .select("id")
+            .select("id, name")
             .eq("course_uuid", course_uuid)
             .maybeSingle();
 
           let courseId = courseData?.id;
+          let resolvedCourseName = courseData?.name;
 
           if (!courseId) {
             const courseMeta = DEFAULT_COURSES.find(
               (c) => c.course_uuid === course_uuid
             );
+            resolvedCourseName = courseMeta?.name || "Curso LearnHouse";
             const { data: newCourse } = await supabase
               .from("courses")
               .insert({
-                name: courseMeta?.name || "Curso LearnHouse",
+                name: resolvedCourseName,
                 course_uuid: course_uuid,
                 price_pyg: courseMeta?.price_pyg || 0,
                 price_usd: courseMeta?.price_usd || 0,
               })
-              .select("id")
+              .select("id, name")
               .single();
             courseId = newCourse?.id;
+            if (newCourse?.name) resolvedCourseName = newCourse.name;
           }
 
           if (courseId) {
@@ -102,6 +105,7 @@ export async function POST(req: NextRequest) {
             supabaseRecord = {
               student: studentData,
               enrollment: enrollmentData,
+              courseName: resolvedCourseName,
             };
           }
         }
@@ -115,6 +119,11 @@ export async function POST(req: NextRequest) {
       (c) => c.course_uuid === course_uuid
     );
 
+    const finalCourseName =
+      (supabaseRecord as { courseName?: string } | null)?.courseName ||
+      courseInfo?.name ||
+      "Curso";
+
     return NextResponse.json({
       success: true,
       message: lhResult.isNewUser
@@ -125,11 +134,12 @@ export async function POST(req: NextRequest) {
           id: lhResult.user.id,
           name: studentName,
           email: studentEmail,
+          phone: phone || "",
           isNewUser: lhResult.isNewUser,
         },
         course: {
           uuid: course_uuid,
-          name: courseInfo?.name || "Curso",
+          name: finalCourseName,
         },
         magicLink: lhResult.magicLink,
         supabaseRecord,
