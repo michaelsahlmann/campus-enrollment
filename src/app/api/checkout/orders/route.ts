@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const courseUuid = value(formData, "course_uuid");
+    const checkoutSlug = value(formData, "checkout_slug");
     const name = value(formData, "name");
     const email = value(formData, "email").toLowerCase();
     const phone = value(formData, "phone");
@@ -34,8 +35,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "El comprobante debe ser JPG, PNG o PDF y pesar hasta 5 MB." }, { status: 400 });
     }
 
+    const { data: checkout } = await supabase.from("checkout_links").select("id, course_id, price_pyg").eq("slug", checkoutSlug).eq("is_active", true).maybeSingle();
+    if (!checkout) return NextResponse.json({ error: "El checkout no está disponible." }, { status: 404 });
     const { data: course, error: courseError } = await supabase
-      .from("courses").select("id, price_pyg").eq("course_uuid", courseUuid).eq("is_active", true).maybeSingle();
+      .from("courses").select("id, price_pyg").eq("id", checkout.course_id).eq("course_uuid", courseUuid).eq("is_active", true).maybeSingle();
     if (courseError) throw courseError;
     if (!course) return NextResponse.json({ error: "El curso no está disponible." }, { status: 404 });
 
@@ -45,13 +48,13 @@ export async function POST(request: NextRequest) {
       coupon = data as Coupon | null;
       if (!coupon) return NextResponse.json({ error: "El cupón no es válido o ya no está activo." }, { status: 400 });
     }
-    const originalAmount = Number(course.price_pyg || 0);
+    const originalAmount = Number(checkout.price_pyg || 0);
     const discountAmount = coupon ? Math.min(originalAmount, coupon.discount_type === "percentage" ? originalAmount * Number(coupon.discount_value) / 100 : Number(coupon.discount_value)) : 0;
     const reference = `CE-${crypto.randomUUID().replaceAll("-", "").slice(0, 8).toUpperCase()}`;
     const { data: order, error: orderError } = await supabase.from("orders").insert({
       reference, course_id: course.id, customer_name: name, customer_email: email,
       customer_phone: phone || null, payment_method: paymentMethod, coupon_id: coupon?.id || null,
-      coupon_code: coupon?.code || null, amount_original: originalAmount, discount_amount: discountAmount,
+      coupon_code: coupon?.code || null, checkout_link_id: checkout.id, amount_original: originalAmount, discount_amount: discountAmount,
       amount_due: originalAmount - discountAmount,
     }).select("id, reference").single();
     if (orderError) throw orderError;

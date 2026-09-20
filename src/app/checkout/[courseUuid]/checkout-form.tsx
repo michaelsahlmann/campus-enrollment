@@ -4,7 +4,7 @@ import { FormEvent, useState } from "react";
 
 type Course = { name: string; course_uuid: string; description: string | null; price_pyg: number };
 
-export default function CheckoutForm({ course }: { course: Course }) {
+export default function CheckoutForm({ course, checkoutSlug }: { course: Course; checkoutSlug: string }) {
   const [method, setMethod] = useState("transfer");
   const [sending, setSending] = useState(false);
   const [reference, setReference] = useState<string | null>(null);
@@ -14,7 +14,7 @@ export default function CheckoutForm({ course }: { course: Course }) {
 
   async function applyCoupon() {
     setError(null);
-    const response = await fetch(`/api/checkout/coupons?code=${encodeURIComponent(couponCode)}&course_uuid=${encodeURIComponent(course.course_uuid)}`);
+    const response = await fetch(`/api/checkout/coupons?code=${encodeURIComponent(couponCode)}&course_uuid=${encodeURIComponent(course.course_uuid)}&checkout_slug=${encodeURIComponent(checkoutSlug)}`);
     const data = await response.json();
     if (!response.ok) { setCoupon(null); setError(data.error || "Cupón inválido."); return; }
     setCoupon({ name: data.coupon.name, discount: Number(data.discount), amountDue: Number(data.amountDue) });
@@ -25,7 +25,7 @@ export default function CheckoutForm({ course }: { course: Course }) {
     setSending(true); setError(null);
     try {
       const formData = new FormData(event.currentTarget);
-      formData.set("course_uuid", course.course_uuid);
+      formData.set("course_uuid", course.course_uuid); formData.set("checkout_slug", checkoutSlug);
       const response = await fetch("/api/checkout/orders", { method: "POST", body: formData });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "No se pudo registrar tu solicitud.");
