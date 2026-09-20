@@ -12,7 +12,6 @@ import {
   ExternalLink,
   MessageSquare,
   ShieldCheck,
-  GraduationCap,
   Sparkles,
   RefreshCw,
   AlertCircle,
@@ -28,6 +27,7 @@ import {
   LogOut,
   Building2,
 } from "lucide-react";
+import BrandLogo from "@/components/brand-logo";
 import { DEFAULT_COURSES, CourseItem } from "@/lib/courses";
 import { BankSettings, DEFAULT_BANK_SETTINGS } from "@/lib/settings";
 
@@ -651,8 +651,8 @@ ${successData.magicLink}`
       {/* Mobile Header */}
       <header className="lg:hidden border-b border-slate-800 bg-[#0B0F17] px-4 py-3 flex items-center justify-between sticky top-0 z-40">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center shadow-sm">
-            <GraduationCap className="w-4 h-4 text-sky-400" />
+          <div className="w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center shadow-sm text-sky-400">
+            <BrandLogo className="w-4 h-4" />
           </div>
           <div>
             <span className="font-bold text-sm text-white leading-none block">Campus Portal</span>
@@ -727,8 +727,8 @@ ${successData.magicLink}`
       <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 bg-[#0B0F17] border-r border-slate-800/80 z-30">
         {/* Sidebar Brand */}
         <div className="h-16 flex items-center gap-3 px-5 border-b border-slate-800/80 bg-slate-950/40">
-          <div className="w-9 h-9 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center shadow-sm shrink-0">
-            <GraduationCap className="w-5 h-5 text-sky-400" />
+          <div className="w-9 h-9 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center shadow-sm shrink-0 text-sky-400">
+            <BrandLogo className="w-5 h-5" />
           </div>
           <div className="min-w-0">
             <span className="font-bold text-sm text-white tracking-tight block truncate leading-tight">

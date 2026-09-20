@@ -1,0 +1,22 @@
+import React from "react";
+
+interface BrandLogoProps extends React.SVGProps<SVGSVGElement> {
+  className?: string;
+}
+
+export function BrandLogo({ className = "w-5 h-5", ...props }: BrandLogoProps) {
+  return (
+    <svg
+      viewBox="0 0 32 32"
+      fill="currentColor"
+      xmlns="http://www.w3.org/2000/svg"
+      className={className}
+      aria-hidden="true"
+      {...props}
+    >
+      <path d="M16,0.396L0,16.715l4.775,4.66L0,26.245l5.49,5.358L16,20.885l10.51,10.719L32,26.245l-4.775-4.87L32,16.715L16,0.396z M16.5,2.335L30.584,16.7l-4.059,3.961L16.5,10.436V2.335z M15.5,2.335v8.101L5.475,20.661L1.416,16.7L15.5,2.335z M5.475,30.191l-4.059-3.962L15.5,11.865v8.102L5.475,30.191z M26.525,30.191L16.5,19.967v-8.102l14.084,14.364L26.525,30.191z" />
+    </svg>
+  );
+}
+
+export default BrandLogo;
