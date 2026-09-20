@@ -42,8 +42,12 @@ export function proxy(req: NextRequest) {
     },
   });
 
-  return supabase.auth.getClaims().then(({ data }) => {
-    if (data?.claims) return response;
+  return supabase.auth.getClaims().then(async ({ data }) => {
+    const userId = data?.claims?.sub;
+    if (userId) {
+      const { data: admin } = await supabase.from("admin_users").select("id").eq("id", userId).maybeSingle();
+      if (admin) return response;
+    }
     const loginUrl = req.nextUrl.clone();
     loginUrl.pathname = "/login";
     return NextResponse.redirect(loginUrl);
