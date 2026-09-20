@@ -77,6 +77,8 @@ export async function POST(req: NextRequest) {
         enrolled: true,
         studentEmail: customerEmail,
         magicLink: lhResult.magicLink,
+        tempPassword: lhResult.tempPassword,
+        isNewUser: lhResult.isNewUser,
       });
     }
 

@@ -8,6 +8,7 @@ import {
   BookOpen,
   Settings,
   CheckCircle2,
+  Check,
   Copy,
   ExternalLink,
   MessageSquare,
@@ -154,13 +155,21 @@ export default function CampusPortalPage() {
 
   // Success Modal State
   const [successData, setSuccessData] = useState<{
-    student: { id: number; name: string; email: string; phone?: string; isNewUser: boolean };
+    student: { id: number; name: string; email: string; phone?: string; isNewUser: boolean; tempPassword?: string };
     course: { uuid: string; name: string };
     magicLink: string;
+    tempPassword?: string;
   } | null>(null);
 
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedMsg, setCopiedMsg] = useState(false);
+  const [copiedPassword, setCopiedPassword] = useState(false);
+  const [confirmedOrderCredentials, setConfirmedOrderCredentials] = useState<{
+    student: { name: string; email: string; phone?: string; tempPassword?: string };
+    courseName: string;
+    magicLink: string;
+    tempPassword?: string;
+  } | null>(null);
   // Data lists
   const [students, setStudents] = useState<StudentItem[]>([]);
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
@@ -289,7 +298,33 @@ export default function CampusPortalPage() {
       const response = await fetch(`/api/orders/${orderId}/confirm`, { method: "POST" });
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "No se pudo confirmar la orden.");
-      setOrderMessage(data.alreadyConfirmed ? "Esta orden ya estaba confirmada." : "Pago confirmado y acceso liberado.");
+      setOrderMessage(data.alreadyConfirmed ? "Esta orden ya estaba confirmada." : "Pago confirmado y acceso liberado con éxito.");
+      if (data.student && data.course && data.magicLink) {
+        const studentObj = {
+          id: data.student.id,
+          name: data.student.name || (data.student.first_name ? `${data.student.first_name} ${data.student.last_name || ""}`.trim() : "Alumno"),
+          email: data.student.email,
+          phone: data.student.phone || "",
+          isNewUser: Boolean(data.isNewUser ?? data.student.isNewUser),
+          tempPassword: data.tempPassword || data.student.tempPassword,
+        };
+        const courseName = data.course.name || "Curso";
+        setSuccessData({
+          student: studentObj,
+          course: {
+            uuid: data.course.course_uuid || data.course.uuid || "",
+            name: courseName,
+          },
+          magicLink: data.magicLink,
+          tempPassword: data.tempPassword || data.student.tempPassword,
+        });
+        setConfirmedOrderCredentials({
+          student: studentObj,
+          courseName,
+          magicLink: data.magicLink,
+          tempPassword: data.tempPassword || data.student.tempPassword,
+        });
+      }
       await fetchOrders();
     } catch (cause: unknown) {
       setOrderMessage(cause instanceof Error ? cause.message : "No se pudo confirmar la orden.");
@@ -519,13 +554,40 @@ export default function CampusPortalPage() {
     }
   };
 
+  const activePassword = successData?.tempPassword || successData?.student?.tempPassword;
+
   const whatsappMessage = successData
-    ? `¡Hola ${successData.student.name}! Ya tienes acceso habilitado a tu curso "${successData.course.name}" en el Campus.
-Podés ingresar directamente haciendo clic aquí:
-${successData.magicLink}`
+    ? `¡Hola ${successData.student.name}! Te damos la bienvenida a Instituto Varkentis.
+
+Tu acceso al curso "${successData.course.name}" ya se encuentra activo en el Campus Virtual.
+
+🌐 Portal: https://campus.michaelsahlmann.com
+👤 Usuario: ${successData.student.email}${activePassword ? `\n🔑 Contraseña inicial: ${activePassword}` : ""}
+
+⚡ Ingreso directo con 1 Clic (válido por 15 min):
+${successData.magicLink}
+
+¡Éxitos en tu formación!`
     : "";
 
-  const copyToClipboard = (text: string, type: "link" | "msg") => {
+  const confirmedOrderActivePassword =
+    confirmedOrderCredentials?.tempPassword || confirmedOrderCredentials?.student?.tempPassword;
+
+  const confirmedOrderWhatsApp = confirmedOrderCredentials
+    ? `¡Hola ${confirmedOrderCredentials.student.name}! Te damos la bienvenida a Instituto Varkentis.
+
+Confirmamos tu pago y tu acceso al curso "${confirmedOrderCredentials.courseName}" ya se encuentra activo en el Campus Virtual.
+
+🌐 Portal: https://campus.michaelsahlmann.com
+👤 Usuario: ${confirmedOrderCredentials.student.email}${confirmedOrderActivePassword ? `\n🔑 Contraseña inicial: ${confirmedOrderActivePassword}` : ""}
+
+⚡ Ingreso directo con 1 Clic (válido por 15 min):
+${confirmedOrderCredentials.magicLink}
+
+¡Éxitos en tu formación!`
+    : "";
+
+  const copyToClipboard = (text: string, type: "link" | "msg" | "pass") => {
     navigator.clipboard.writeText(text);
     if (type === "link") {
       setCopiedLink(true);
@@ -533,6 +595,9 @@ ${successData.magicLink}`
     } else if (type === "msg") {
       setCopiedMsg(true);
       setTimeout(() => setCopiedMsg(false), 2000);
+    } else if (type === "pass") {
+      setCopiedPassword(true);
+      setTimeout(() => setCopiedPassword(false), 2000);
     }
   };
 
@@ -1027,6 +1092,25 @@ ${successData.magicLink}`
                         {successData.course.name}
                       </span>
                     </div>
+                    {activePassword && (
+                      <div className="flex items-center justify-between pt-2 border-t border-white/[0.08]">
+                        <span className="text-zinc-400">Contraseña inicial:</span>
+                        <div className="flex items-center gap-2">
+                          <code className="font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-lg text-xs font-bold tracking-wider select-all">
+                            {activePassword}
+                          </code>
+                          <button
+                            type="button"
+                            onClick={() => copyToClipboard(activePassword, "pass")}
+                            className="px-2 py-1 bg-white/[0.06] hover:bg-white/[0.12] text-zinc-200 border border-white/[0.08] rounded-lg text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer"
+                            title="Copiar contraseña inicial"
+                          >
+                            <Copy className="w-3 h-3" />
+                            {copiedPassword ? "Copiado" : "Copiar"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Magic Link */}
@@ -1640,6 +1724,94 @@ ${successData.magicLink}`
               <div className="p-3.5 rounded-2xl apple-card text-emerald-300 text-xs flex items-center gap-2 border-emerald-500/20">
                 <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
                 <span>{orderMessage}</span>
+              </div>
+            )}
+
+            {confirmedOrderCredentials && (
+              <div className="apple-card-elevated rounded-3xl p-6 border-emerald-500/30 space-y-4 relative">
+                <button
+                  type="button"
+                  onClick={() => setConfirmedOrderCredentials(null)}
+                  className="absolute top-4 right-4 p-1.5 text-zinc-400 hover:text-white bg-white/[0.04] hover:bg-white/[0.08] rounded-lg transition cursor-pointer"
+                  title="Cerrar credenciales"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 flex items-center justify-center shrink-0">
+                    <CheckCircle2 className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-white text-sm">¡Acceso Liberado con Éxito!</h3>
+                    <p className="text-xs text-zinc-400">Credenciales listas para entregar al alumno</p>
+                  </div>
+                </div>
+
+                <div className="bg-black/50 rounded-2xl p-4 border border-white/[0.06] text-xs space-y-2.5">
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400">Alumno:</span>
+                    <span className="font-semibold text-white">{confirmedOrderCredentials.student.name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400">Email:</span>
+                    <span className="font-mono text-sky-400">{confirmedOrderCredentials.student.email}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-zinc-400">Curso:</span>
+                    <span className="text-white truncate max-w-[200px] text-right font-medium">
+                      {confirmedOrderCredentials.courseName}
+                    </span>
+                  </div>
+                  {(confirmedOrderCredentials.tempPassword || confirmedOrderCredentials.student.tempPassword) && (
+                    <div className="flex items-center justify-between pt-2 border-t border-white/[0.08]">
+                      <span className="text-zinc-400">Contraseña inicial:</span>
+                      <div className="flex items-center gap-2">
+                        <code className="font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-lg text-xs font-bold tracking-wider select-all">
+                          {confirmedOrderCredentials.tempPassword || confirmedOrderCredentials.student.tempPassword}
+                        </code>
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(confirmedOrderCredentials.tempPassword || confirmedOrderCredentials.student.tempPassword || "", "pass")}
+                          className="px-2 py-1 bg-white/[0.06] hover:bg-white/[0.12] text-zinc-200 border border-white/[0.08] rounded-lg text-[11px] font-semibold flex items-center gap-1 transition cursor-pointer"
+                          title="Copiar contraseña"
+                        >
+                          <Copy className="w-3 h-3" />
+                          {copiedPassword ? "Copiado" : "Copiar"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1">
+                  {confirmedOrderCredentials.student.phone && (
+                    <a
+                      href={`https://wa.me/${confirmedOrderCredentials.student.phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(confirmedOrderWhatsApp)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 text-black font-semibold rounded-xl text-xs flex items-center justify-center gap-1.5 transition shadow-[0_2px_12px_rgba(16,185,129,0.25)]"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5" />
+                      Enviar credenciales por WhatsApp
+                    </a>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => copyToClipboard(confirmedOrderWhatsApp, "msg")}
+                    className="px-4 py-2.5 bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-zinc-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer"
+                  >
+                    <Copy className="w-3.5 h-3.5" />
+                    {copiedMsg ? "¡Mensaje Copiado!" : "Copiar WhatsApp"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => copyToClipboard(confirmedOrderCredentials.magicLink, "link")}
+                    className="px-4 py-2.5 bg-white/[0.06] hover:bg-white/[0.1] border border-white/[0.08] text-zinc-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer"
+                  >
+                    <Link2 className="w-3.5 h-3.5" />
+                    {copiedLink ? "¡Link Copiado!" : "Copiar Magic Link"}
+                  </button>
+                </div>
               </div>
             )}
 
