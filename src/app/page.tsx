@@ -339,6 +339,9 @@ ${successData.magicLink}`
           <button onClick={() => setActiveTab("coupons")} className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition ${activeTab === "coupons" ? "border-sky-500 text-sky-400" : "border-transparent text-slate-400 hover:text-slate-200"}`}>
             <Sparkles className="w-4 h-4" /> Cupones
           </button>
+          <a href="/checkouts" className="flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 border-transparent text-emerald-400 hover:text-emerald-300 hover:border-emerald-500 transition">
+            <ExternalLink className="w-4 h-4" /> Checkouts
+          </a>
           <button
             onClick={() => setActiveTab("config")}
             className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition ${
