@@ -4,8 +4,10 @@ import React, { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Lock, Eye, EyeOff, AlertCircle } from "lucide-react";
 import BrandLogo from "@/components/brand-logo";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
@@ -18,21 +20,18 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
-      });
+      const supabase = createSupabaseBrowserClient();
+      if (!supabase) throw new Error("Supabase no está configurado.");
+      const { error: authError } = await supabase.auth.signInWithPassword({ email, password });
 
-      if (res.ok) {
+      if (!authError) {
         router.push("/");
         router.refresh();
       } else {
-        const data = await res.json();
-        setError(data.error || "Acceso denegado.");
+        setError("Correo o contraseña incorrectos.");
       }
-    } catch {
-      setError("Error de conexión. Intenta de nuevo.");
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : "Error de conexión. Intenta de nuevo.");
     } finally {
       setLoading(false);
     }
@@ -74,11 +73,25 @@ export default function LoginPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
+              <label htmlFor="admin-email-input" className="block text-[11px] font-medium uppercase tracking-wider text-zinc-400 mb-2">
+                Correo electrónico
+              </label>
+              <input
+                id="admin-email-input"
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoComplete="email"
+                className="w-full px-4 py-3 apple-input rounded-xl text-white placeholder-zinc-600 text-sm"
+              />
+            </div>
+            <div>
               <label
                 htmlFor="admin-password-input"
                 className="block text-[11px] font-medium uppercase tracking-wider text-zinc-400 mb-2"
               >
-                Contraseña Maestra
+                Contraseña
               </label>
               <div className="relative">
                 <input
@@ -88,6 +101,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
+                  autoComplete="current-password"
                   className="w-full px-4 py-3 pr-11 apple-input rounded-xl text-white placeholder-zinc-600 text-sm"
                   autoFocus
                 />
@@ -114,16 +128,16 @@ export default function LoginPage() {
 
             <button
               type="submit"
-              disabled={loading || !password}
+              disabled={loading || !email || !password}
               className="w-full py-3 px-4 rounded-xl bg-white hover:bg-zinc-100 active:scale-[0.99] text-zinc-950 font-semibold text-xs tracking-wide uppercase transition-all shadow-[0_4px_20px_rgba(255,255,255,0.12)] disabled:opacity-40 disabled:pointer-events-none cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
             >
-              {loading ? "Verificando..." : "Ingresar al Panel"}
+              {loading ? "Verificando…" : "Ingresar al Panel"}
             </button>
           </form>
         </div>
 
         <p className="text-center text-[11px] text-zinc-600 font-medium">
-          Sesión cifrada de alta seguridad · Campus Virtual
+          Acceso protegido por Supabase Auth
         </p>
       </div>
     </main>

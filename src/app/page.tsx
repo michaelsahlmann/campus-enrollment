@@ -8,7 +8,6 @@ import {
   BookOpen,
   Settings,
   CheckCircle2,
-  Check,
   Copy,
   ExternalLink,
   MessageSquare,
@@ -31,6 +30,7 @@ import {
 import BrandLogo from "@/components/brand-logo";
 import { DEFAULT_COURSES, CourseItem } from "@/lib/courses";
 import { BankSettings, DEFAULT_BANK_SETTINGS } from "@/lib/settings";
+import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 function formatPygInput(val: string | number): string {
   if (val === "" || val === null || val === undefined) return "";
@@ -131,6 +131,13 @@ const TAB_REVERSE_MAP: Record<string, string> = {
 
 export default function CampusPortalPage() {
   const router = useRouter();
+
+  async function signOut() {
+    const supabase = createSupabaseBrowserClient();
+    await supabase?.auth.signOut();
+    router.push("/login");
+    router.refresh();
+  }
   const [activeTab, setActiveTab] = useState<"form" | "students" | "courses" | "checkouts" | "orders" | "coupons" | "config">(() => {
     if (typeof window !== "undefined") {
       const tabParam = new URLSearchParams(window.location.search).get("tab");
@@ -778,10 +785,7 @@ ${confirmedOrderCredentials.magicLink}
             </a>
             <button
               type="button"
-              onClick={async () => {
-                await fetch("/api/auth/logout", { method: "POST" });
-                router.push("/login");
-              }}
+              onClick={signOut}
               className="flex items-center gap-1 text-zinc-400 hover:text-rose-400 transition cursor-pointer"
             >
               <LogOut className="w-3.5 h-3.5" />
@@ -849,10 +853,7 @@ ${confirmedOrderCredentials.magicLink}
 
           <button
             type="button"
-            onClick={async () => {
-              await fetch("/api/auth/logout", { method: "POST" });
-              router.push("/login");
-            }}
+            onClick={signOut}
             className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-zinc-400 hover:text-rose-400 hover:bg-white/[0.04] transition cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
