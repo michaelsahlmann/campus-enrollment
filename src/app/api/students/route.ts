@@ -47,10 +47,10 @@ export async function GET() {
       configured: true,
       students: data || [],
     });
-  } catch (err: any) {
-    console.error("Error al obtener alumnos:", err);
+  } catch (error: unknown) {
+    console.error("Error al obtener alumnos:", error);
     return NextResponse.json(
-      { error: err.message, students: [] },
+      { error: error instanceof Error ? error.message : "Error desconocido.", students: [] },
       { status: 500 }
     );
   }

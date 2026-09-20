@@ -4,9 +4,16 @@ const LEARNHOUSE_API_URL = (
 
 const LEARNHOUSE_ORG_SLUG = process.env.LEARNHOUSE_ORG_SLUG || "default";
 
-const LEARNHOUSE_API_TOKEN =
-  process.env.LEARNHOUSE_API_TOKEN ||
-  "lh_REDACTED_TOKEN";
+const LEARNHOUSE_API_TOKEN = process.env.LEARNHOUSE_API_TOKEN;
+
+export interface LearnHouseCourse {
+  id: number;
+  course_uuid: string;
+  name: string;
+  description: string | null;
+  public: boolean;
+  published: boolean;
+}
 
 export interface LearnHouseUser {
   id: number;
@@ -42,10 +49,14 @@ export class LearnHouseClient {
   constructor() {
     this.baseUrl = LEARNHOUSE_API_URL;
     this.orgSlug = LEARNHOUSE_ORG_SLUG;
-    this.token = LEARNHOUSE_API_TOKEN;
+    this.token = LEARNHOUSE_API_TOKEN || "";
   }
 
   private getHeaders() {
+    if (!this.token) {
+      throw new Error("LEARNHOUSE_API_TOKEN no está configurado.");
+    }
+
     return {
       Authorization: `Bearer ${this.token}`,
       "Content-Type": "application/json",
@@ -76,9 +87,9 @@ export class LearnHouseClient {
       }
 
       return (await res.json()) as LearnHouseUser;
-    } catch (err: any) {
-      if (err.message?.includes("404")) return null;
-      throw err;
+    } catch (error: unknown) {
+      if (error instanceof Error && error.message.includes("404")) return null;
+      throw error;
     }
   }
 
@@ -93,8 +104,8 @@ export class LearnHouseClient {
     const parts = params.name.trim().split(/\s+/);
     const firstName = parts[0] || email.split("@")[0];
     const lastName = parts.slice(1).join(" ") || "";
-    const cleanUser = email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "");
-    const username = `${cleanUser}_${Math.floor(100 + Math.random() * 900)}`;
+    const cleanUser = email.split("@")[0].replace(/[^a-zA-Z0-9_]/g, "") || "student";
+    const username = `${cleanUser}_${crypto.randomUUID().replaceAll("-", "").slice(0, 12)}`;
 
     const url = `${this.baseUrl}/api/v1/admin/${this.orgSlug}/users`;
     const res = await fetch(url, {
@@ -106,7 +117,7 @@ export class LearnHouseClient {
         first_name: firstName,
         last_name: lastName,
         role_id: 4, // Rol de Estudiante
-        email_verified: true, // Acceso inmediato sin confirmación de email
+        email_verified: true,
       }),
     });
 
@@ -163,7 +174,7 @@ export class LearnHouseClient {
       body: JSON.stringify({
         user_id: userId,
         redirect_to: `/courses/${courseUuid}`,
-        ttl_seconds: 86400, // Válido por 24 horas
+        ttl_seconds: 900,
       }),
     });
 
@@ -173,11 +184,33 @@ export class LearnHouseClient {
     }
 
     const data = (await res.json()) as LearnHouseMagicLinkResponse;
-    if (data.token) {
-      return `${this.baseUrl}/api/v1/admin/${this.orgSlug}/auth/magic-consume?token=${data.token}`;
+    return data.url || `${this.baseUrl}/courses/${courseUuid}`;
+  }
+
+  /** Lista el catálogo de la organización para sincronizarlo localmente. */
+  async listCourses(): Promise<LearnHouseCourse[]> {
+    const courses: LearnHouseCourse[] = [];
+    const pageSize = 50;
+
+    for (let page = 1; page <= 100; page += 1) {
+      const url = `${this.baseUrl}/api/v1/courses/org_slug/${encodeURIComponent(this.orgSlug)}/page/${page}/limit/${pageSize}?include_unpublished=true`;
+      const res = await fetch(url, {
+        method: "GET",
+        headers: this.getHeaders(),
+        cache: "no-store",
+      });
+
+      if (!res.ok) {
+        const errorText = await res.text();
+        throw new Error(`Error al listar cursos de LearnHouse (${res.status}): ${errorText}`);
+      }
+
+      const pageCourses = (await res.json()) as LearnHouseCourse[];
+      courses.push(...pageCourses);
+      if (pageCourses.length < pageSize) break;
     }
 
-    return `${this.baseUrl}/courses/${courseUuid}`;
+    return courses;
   }
 
   /**

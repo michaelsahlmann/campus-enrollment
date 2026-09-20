@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   UserPlus,
   Users,
@@ -44,12 +45,14 @@ interface StudentItem {
 }
 
 export default function CampusPortalPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<"form" | "students" | "courses" | "config">("form");
 
   // Form State
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
+  const [courses, setCourses] = useState<CourseItem[]>(DEFAULT_COURSES);
   const [selectedCourseUuid, setSelectedCourseUuid] = useState(DEFAULT_COURSES[0].course_uuid);
   const [paymentMethod, setPaymentMethod] = useState("manual_transfer");
   const [amountPaid, setAmountPaid] = useState<number>(1500000);
@@ -66,12 +69,13 @@ export default function CampusPortalPage() {
 
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedMsg, setCopiedMsg] = useState(false);
-  const [copiedSql, setCopiedSql] = useState(false);
-
   // Data lists
   const [students, setStudents] = useState<StudentItem[]>([]);
   const [isLoadingStudents, setIsLoadingStudents] = useState(false);
   const [supabaseConfigured, setSupabaseConfigured] = useState(true);
+  const [isLoadingCourses, setIsLoadingCourses] = useState(false);
+  const [isSyncingCourses, setIsSyncingCourses] = useState(false);
+  const [coursesMessage, setCoursesMessage] = useState<string | null>(null);
 
   // Load students
   const fetchStudents = async () => {
@@ -90,11 +94,45 @@ export default function CampusPortalPage() {
     }
   };
 
-  useEffect(() => {
-    if (activeTab === "students") {
-      fetchStudents();
+  const fetchCourses = async () => {
+    setIsLoadingCourses(true);
+    try {
+      const res = await fetch("/api/courses");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo cargar el catálogo.");
+      if (Array.isArray(data.courses)) {
+        setCourses(data.courses.map((course: Partial<CourseItem>) => ({
+          id: course.id || course.course_uuid || "",
+          name: course.name || "Curso sin nombre",
+          course_uuid: course.course_uuid || "",
+          description: course.description || "Sin descripción.",
+          price_pyg: Number(course.price_pyg || 0),
+          price_usd: Number(course.price_usd || 0),
+          badge: course.badge,
+        })));
+      }
+    } catch (error: unknown) {
+      setCoursesMessage(error instanceof Error ? error.message : "No se pudo cargar el catálogo.");
+    } finally {
+      setIsLoadingCourses(false);
     }
-  }, [activeTab]);
+  };
+
+  const syncCourses = async () => {
+    setIsSyncingCourses(true);
+    setCoursesMessage(null);
+    try {
+      const res = await fetch("/api/courses", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No se pudo sincronizar el catálogo.");
+      setCoursesMessage(`${data.synced} curso(s) sincronizado(s) desde LearnHouse.`);
+      await fetchCourses();
+    } catch (error: unknown) {
+      setCoursesMessage(error instanceof Error ? error.message : "No se pudo sincronizar el catálogo.");
+    } finally {
+      setIsSyncingCourses(false);
+    }
+  };
 
   const handleEnrollSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -128,14 +166,12 @@ export default function CampusPortalPage() {
       setEmail("");
       setPhone("");
       setNotes("");
-    } catch (err: any) {
-      setSubmitError(err.message || "Ocurrió un error inesperado.");
+    } catch (error: unknown) {
+      setSubmitError(error instanceof Error ? error.message : "Ocurrió un error inesperado.");
     } finally {
       setIsSubmitting(false);
     }
   };
-
-  const selectedCourse = DEFAULT_COURSES.find((c) => c.course_uuid === selectedCourseUuid);
 
   const whatsappMessage = successData
     ? `¡Hola ${successData.student.name}! Ya tienes acceso habilitado a tu curso "${successData.course.name}" en el Campus.
@@ -143,7 +179,7 @@ Podés ingresar directamente haciendo clic aquí:
 ${successData.magicLink}`
     : "";
 
-  const copyToClipboard = (text: string, type: "link" | "msg" | "sql") => {
+  const copyToClipboard = (text: string, type: "link" | "msg") => {
     navigator.clipboard.writeText(text);
     if (type === "link") {
       setCopiedLink(true);
@@ -151,9 +187,6 @@ ${successData.magicLink}`
     } else if (type === "msg") {
       setCopiedMsg(true);
       setTimeout(() => setCopiedMsg(false), 2000);
-    } else {
-      setCopiedSql(true);
-      setTimeout(() => setCopiedSql(false), 2000);
     }
   };
 
@@ -192,7 +225,7 @@ ${successData.magicLink}`
             <button
               onClick={async () => {
                 await fetch("/api/auth/logout", { method: "POST" });
-                window.location.href = "/login";
+                router.push("/login");
               }}
               className="text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-400 hover:text-red-400 hover:border-red-800 transition"
             >
@@ -215,7 +248,10 @@ ${successData.magicLink}`
             Matricular Alumno
           </button>
           <button
-            onClick={() => setActiveTab("students")}
+            onClick={() => {
+              setActiveTab("students");
+              void fetchStudents();
+            }}
             className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition ${
               activeTab === "students"
                 ? "border-sky-500 text-sky-400"
@@ -226,7 +262,10 @@ ${successData.magicLink}`
             Alumnos & Matrículas
           </button>
           <button
-            onClick={() => setActiveTab("courses")}
+            onClick={() => {
+              setActiveTab("courses");
+              void fetchCourses();
+            }}
             className={`flex items-center gap-2 px-4 py-3 text-sm font-medium border-b-2 transition ${
               activeTab === "courses"
                 ? "border-sky-500 text-sky-400"
@@ -328,12 +367,12 @@ ${successData.magicLink}`
                       value={selectedCourseUuid}
                       onChange={(e) => {
                         setSelectedCourseUuid(e.target.value);
-                        const c = DEFAULT_COURSES.find((item) => item.course_uuid === e.target.value);
+                        const c = courses.find((item) => item.course_uuid === e.target.value);
                         if (c) setAmountPaid(c.price_pyg);
                       }}
                       className="w-full px-4 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-white focus:outline-none focus:border-sky-500 transition"
                     >
-                      {DEFAULT_COURSES.map((course) => (
+                      {courses.map((course) => (
                         <option key={course.course_uuid} value={course.course_uuid}>
                           {course.name} ({course.price_pyg.toLocaleString()} PYG)
                         </option>
@@ -507,13 +546,13 @@ ${successData.magicLink}`
                   </h3>
                   <ol className="list-decimal list-inside space-y-2 text-xs text-slate-300 leading-relaxed">
                     <li>
-                      Al presionar <strong>"Habilitar Alumno"</strong>, el servidor llama directamente a la API de tu contenedor LearnHouse en <code>campus.michaelsahlmann.com</code>.
+                      Al presionar <strong>&quot;Habilitar Alumno&quot;</strong>, el servidor llama directamente a la API de tu contenedor LearnHouse en <code>campus.michaelsahlmann.com</code>.
                     </li>
                     <li>
                       Verifica si el alumno ya tiene usuario en tu organización <code>default</code>. Si no, lo crea con correo pre-verificado.
                     </li>
                     <li>
-                      Lo matricula en el curso seleccionado y genera un <strong>Magic Link de inicio de sesión de 1 clic</strong> válido por 24 horas.
+                      Lo matricula en el curso seleccionado y genera un <strong>Magic Link de inicio de sesión de 1 clic</strong> válido por 15 minutos para enviarlo de inmediato.
                     </li>
                     <li>
                       Si tienes Supabase conectado, guarda el registro del pago, método y estado para tus reportes contables.
@@ -618,18 +657,34 @@ ${successData.magicLink}`
         {/* TAB 3: CURSOS & MAPEO */}
         {activeTab === "courses" && (
           <div className="space-y-6">
-            <div>
-              <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                <BookOpen className="w-5 h-5 text-sky-400" />
-                Catálogo de Cursos & Mapeo con LearnHouse
-              </h2>
-              <p className="text-xs text-slate-400">
-                Cada curso en esta lista está vinculado por su <code>course_uuid</code> al campus de producción.
-              </p>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                  <BookOpen className="w-5 h-5 text-sky-400" />
+                  Catálogo de Cursos & Mapeo con LearnHouse
+                </h2>
+                <p className="text-xs text-slate-400">
+                  Cada curso en esta lista está vinculado por su <code>course_uuid</code> al campus de producción.
+                </p>
+              </div>
+              <button
+                onClick={() => void syncCourses()}
+                disabled={isSyncingCourses || isLoadingCourses}
+                className="flex items-center gap-2 px-3 py-2 bg-sky-600 hover:bg-sky-500 disabled:opacity-50 text-white rounded-xl text-xs font-semibold transition"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isSyncingCourses ? "animate-spin" : ""}`} />
+                {isSyncingCourses ? "Sincronizando..." : "Sincronizar cursos"}
+              </button>
             </div>
 
+            {coursesMessage && (
+              <div className="p-3 rounded-xl bg-slate-900 border border-slate-700 text-slate-300 text-xs">
+                {coursesMessage}
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {DEFAULT_COURSES.map((course) => (
+              {courses.map((course) => (
                 <div
                   key={course.course_uuid}
                   className="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col justify-between"

@@ -81,10 +81,10 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ received: true, ignored: true });
-  } catch (err: any) {
-    console.error("Error en webhook de Stripe:", err);
+  } catch (error: unknown) {
+    console.error("Error en webhook de Stripe:", error);
     return NextResponse.json(
-      { error: err.message || "Webhook processing error" },
+      { error: error instanceof Error ? error.message : "Webhook processing error" },
       { status: 500 }
     );
   }

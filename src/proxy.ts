@@ -2,15 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 
 const PUBLIC_PATHS = ["/login", "/api/auth/login", "/api/auth/logout"];
 
-export function middleware(req: NextRequest) {
+export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  // Allow public paths
-  if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
+  if (PUBLIC_PATHS.some((path) => pathname.startsWith(path))) {
     return NextResponse.next();
   }
 
-  // Allow static assets
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
@@ -20,7 +18,6 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Check session cookie
   const session = req.cookies.get("campus_session");
   if (!session || session.value !== "authenticated") {
     const loginUrl = req.nextUrl.clone();

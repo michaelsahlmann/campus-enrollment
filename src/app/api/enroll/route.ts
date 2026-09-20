@@ -135,10 +135,10 @@ export async function POST(req: NextRequest) {
         supabaseRecord,
       },
     });
-  } catch (err: any) {
-    console.error("Error en /api/enroll:", err);
+  } catch (error: unknown) {
+    console.error("Error en /api/enroll:", error);
     return NextResponse.json(
-      { error: err.message || "Error interno al procesar la matrícula." },
+      { error: error instanceof Error ? error.message : "Error interno al procesar la matrícula." },
       { status: 500 }
     );
   }
