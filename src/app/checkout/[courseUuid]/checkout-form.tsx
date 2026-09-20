@@ -213,7 +213,8 @@ ${phone ? `Teléfono: ${phone}\n` : ""}${method === "transfer" ? (selectedFile &
                   setCopiedRef(true);
                   setTimeout(() => setCopiedRef(false), 2000);
                 }}
-                className="flex items-center gap-1 text-emerald-400 hover:text-emerald-300 font-semibold cursor-pointer"
+                aria-label="Copiar código de referencia de pago"
+                className="flex items-center gap-1 text-emerald-400 hover:text-emerald-300 font-semibold cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded px-1"
               >
                 {copiedRef ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                 {copiedRef ? "Copiado" : "Copiar"}
@@ -306,7 +307,10 @@ ${phone ? `Teléfono: ${phone}\n` : ""}${method === "transfer" ? (selectedFile &
         <button
           type="button"
           onClick={() => setMobileSummaryOpen(!mobileSummaryOpen)}
-          className="w-full flex items-center justify-between text-xs font-semibold text-slate-200 cursor-pointer"
+          aria-expanded={mobileSummaryOpen}
+          aria-controls="mobile-summary-details"
+          aria-label="Alternar desglose del curso"
+          className="w-full flex items-center justify-between text-xs font-semibold text-slate-200 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 rounded-lg p-1"
         >
           <span className="flex items-center gap-2 truncate pr-2">
             <span className="text-slate-400">Curso:</span>
@@ -318,21 +322,21 @@ ${phone ? `Teléfono: ${phone}\n` : ""}${method === "transfer" ? (selectedFile &
           </span>
         </button>
 
-        {mobileSummaryOpen && (
-          <div className="mt-3 pt-3 border-t border-slate-800 text-xs space-y-2 animate-fade-in">
-            {course.description && <p className="text-slate-400 text-xs">{course.description}</p>}
-            {coupon && (
+        {mobileSummaryOpen ? (
+          <div id="mobile-summary-details" className="mt-3 pt-3 border-t border-slate-800 text-xs space-y-2 animate-fade-in">
+            {course.description ? <p className="text-slate-400 text-xs">{course.description}</p> : null}
+            {coupon ? (
               <div className="flex justify-between text-emerald-400 font-medium">
                 <span>Cupón ({coupon.name}):</span>
                 <span>-{coupon.discount.toLocaleString("es-PY")} PYG</span>
               </div>
-            )}
+            ) : null}
             <div className="flex justify-between text-white font-bold text-xs pt-1 border-t border-slate-800/60">
               <span>Total a Pagar:</span>
               <span className="text-emerald-400">{finalPrice.toLocaleString("es-PY")} PYG</span>
             </div>
           </div>
-        )}
+        ) : null}
       </div>
 
       {/* CONTENIDO PRINCIPAL EN 2 COLUMNAS */}
@@ -360,18 +364,19 @@ ${phone ? `Teléfono: ${phone}\n` : ""}${method === "transfer" ? (selectedFile &
                 <div className="space-y-3.5">
                   {/* Nombre y Apellido */}
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    <label htmlFor="student-name-input" className="block text-xs font-semibold text-slate-300 mb-1">
                       Nombre y Apellido <span className="text-rose-400">*</span>
                     </label>
                     <div className="relative">
-                      <User className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                      <User className="w-4 h-4 text-slate-500 absolute left-3 top-3 pointer-events-none" />
                       <input
+                        id="student-name-input"
                         type="text"
                         required
                         placeholder="Ej. Carlos Benítez"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
-                        className="w-full bg-[#0B0F17] border border-slate-700/80 rounded-xl pl-9 pr-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 text-xs sm:text-sm transition"
+                        className="w-full bg-[#0B0F17] border border-slate-700/80 rounded-xl pl-9 pr-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-500 text-xs sm:text-sm transition"
                       />
                     </div>
                   </div>
@@ -379,60 +384,63 @@ ${phone ? `Teléfono: ${phone}\n` : ""}${method === "transfer" ? (selectedFile &
                   {/* Correo Electrónico */}
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="text-xs font-semibold text-slate-300">
+                      <label htmlFor="student-email-input" className="text-xs font-semibold text-slate-300">
                         Correo Electrónico <span className="text-rose-400">*</span>
                       </label>
                       <span className="text-[10px] text-slate-400">Acceso al Campus</span>
                     </div>
                     <div className="relative">
-                      <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-3" />
+                      <Mail className="w-4 h-4 text-slate-500 absolute left-3 top-3 pointer-events-none" />
                       <input
+                        id="student-email-input"
                         type="email"
                         required
                         placeholder="tu-correo@ejemplo.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="w-full bg-[#0B0F17] border border-slate-700/80 rounded-xl pl-9 pr-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 text-xs sm:text-sm transition"
+                        className="w-full bg-[#0B0F17] border border-slate-700/80 rounded-xl pl-9 pr-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-500 text-xs sm:text-sm transition"
                       />
                     </div>
                   </div>
 
                   {/* Confirmar Correo */}
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    <label htmlFor="student-confirm-email-input" className="block text-xs font-semibold text-slate-300 mb-1">
                       Confirmar Correo Electrónico <span className="text-rose-400">*</span>
                     </label>
                     <div className="relative">
                       <CheckCircle2
-                        className={`w-4 h-4 absolute left-3 top-3 ${
+                        className={`w-4 h-4 absolute left-3 top-3 pointer-events-none ${
                           confirmEmail && confirmEmail.toLowerCase() === email.toLowerCase()
                             ? "text-emerald-400"
                             : "text-slate-500"
                         }`}
                       />
                       <input
+                        id="student-confirm-email-input"
                         type="email"
                         required
                         placeholder="Repite tu correo para verificar"
                         value={confirmEmail}
                         onChange={(e) => setConfirmEmail(e.target.value)}
-                        className={`w-full bg-[#0B0F17] border rounded-xl pl-9 pr-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-none text-xs sm:text-sm transition ${
+                        aria-invalid={Boolean(confirmEmail && confirmEmail.toLowerCase() !== email.toLowerCase())}
+                        className={`w-full bg-[#0B0F17] border rounded-xl pl-9 pr-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-none focus-visible:ring-2 text-xs sm:text-sm transition ${
                           confirmEmail && confirmEmail.toLowerCase() !== email.toLowerCase()
-                            ? "border-rose-500/80 focus:border-rose-500"
-                            : "border-slate-700/80 focus:border-emerald-500"
+                            ? "border-rose-500/80 focus:border-rose-500 focus-visible:ring-rose-500"
+                            : "border-slate-700/80 focus:border-emerald-500 focus-visible:ring-emerald-500"
                         }`}
                       />
                     </div>
-                    {confirmEmail && confirmEmail.toLowerCase() !== email.toLowerCase() && (
-                      <p className="text-[11px] text-rose-400 mt-1 flex items-center gap-1">
+                    {confirmEmail && confirmEmail.toLowerCase() !== email.toLowerCase() ? (
+                      <p className="text-[11px] text-rose-400 mt-1 flex items-center gap-1" role="alert">
                         <AlertCircle className="w-3 h-3" /> Los correos no coinciden.
                       </p>
-                    )}
+                    ) : null}
                   </div>
 
                   {/* Teléfono / WhatsApp */}
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    <label htmlFor="student-phone-input" className="block text-xs font-semibold text-slate-300 mb-1">
                       Número de WhatsApp / Teléfono <span className="text-slate-400 font-normal">(opcional)</span>
                     </label>
                     <div className="relative flex items-center">
@@ -441,11 +449,12 @@ ${phone ? `Teléfono: ${phone}\n` : ""}${method === "transfer" ? (selectedFile &
                         <span className="font-mono">+595</span>
                       </div>
                       <input
+                        id="student-phone-input"
                         type="tel"
                         placeholder="981 123 456"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
-                        className="w-full bg-[#0B0F17] border border-slate-700/80 rounded-xl pl-20 pr-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 text-xs sm:text-sm transition"
+                        className="w-full bg-[#0B0F17] border border-slate-700/80 rounded-xl pl-20 pr-3.5 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-500 text-xs sm:text-sm transition"
                       />
                     </div>
                     <span className="text-[10px] text-slate-400 mt-1 block">
@@ -557,7 +566,8 @@ ${phone ? `Teléfono: ${phone}\n` : ""}${method === "transfer" ? (selectedFile &
                           <button
                             type="button"
                             onClick={() => copyToClipboard(bankSettings.alias, "alias")}
-                            className="flex items-center gap-1 text-xs font-medium text-emerald-400 hover:text-emerald-300 px-2.5 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 cursor-pointer shrink-0 transition"
+                            aria-label="Copiar alias de transferencia bancaria"
+                            className="flex items-center gap-1 text-xs font-medium text-emerald-400 hover:text-emerald-300 px-2.5 py-1.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 cursor-pointer shrink-0 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                             title="Copiar Alias"
                           >
                             {copiedBankField === "alias" ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
@@ -576,7 +586,8 @@ ${phone ? `Teléfono: ${phone}\n` : ""}${method === "transfer" ? (selectedFile &
                           <button
                             type="button"
                             onClick={() => copyToClipboard(bankSettings.titular, "titular")}
-                            className="flex items-center gap-1 text-[11px] text-slate-300 hover:text-white px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 transition cursor-pointer shrink-0"
+                            aria-label="Copiar titular de la cuenta"
+                            className="flex items-center gap-1 text-[11px] text-slate-300 hover:text-white px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 transition cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                             title="Copiar Titular"
                           >
                             {copiedBankField === "titular" ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
@@ -595,7 +606,8 @@ ${phone ? `Teléfono: ${phone}\n` : ""}${method === "transfer" ? (selectedFile &
                           <button
                             type="button"
                             onClick={() => copyToClipboard(bankSettings.banco, "banco")}
-                            className="flex items-center gap-1 text-[11px] text-slate-300 hover:text-white px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 transition cursor-pointer shrink-0"
+                            aria-label="Copiar entidad bancaria"
+                            className="flex items-center gap-1 text-[11px] text-slate-300 hover:text-white px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 transition cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                             title="Copiar Banco"
                           >
                             {copiedBankField === "banco" ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
@@ -614,7 +626,8 @@ ${phone ? `Teléfono: ${phone}\n` : ""}${method === "transfer" ? (selectedFile &
                           <button
                             type="button"
                             onClick={() => copyToClipboard(bankSettings.cuenta, "cuenta")}
-                            className="flex items-center gap-1 text-[11px] text-slate-300 hover:text-white px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 transition cursor-pointer shrink-0"
+                            aria-label="Copiar número de cuenta bancaria"
+                            className="flex items-center gap-1 text-[11px] text-slate-300 hover:text-white px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 transition cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                             title="Copiar N° de Cuenta"
                           >
                             {copiedBankField === "cuenta" ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
@@ -633,7 +646,8 @@ ${phone ? `Teléfono: ${phone}\n` : ""}${method === "transfer" ? (selectedFile &
                           <button
                             type="button"
                             onClick={() => copyToClipboard(bankSettings.ci_ruc, "ci_ruc")}
-                            className="flex items-center gap-1 text-[11px] text-slate-300 hover:text-white px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 transition cursor-pointer shrink-0"
+                            aria-label="Copiar cédula de identidad o RUC"
+                            className="flex items-center gap-1 text-[11px] text-slate-300 hover:text-white px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 transition cursor-pointer shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                             title="Copiar CI / RUC"
                           >
                             {copiedBankField === "ci_ruc" ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
@@ -719,7 +733,8 @@ ${phone ? `Teléfono: ${phone}\n` : ""}${method === "transfer" ? (selectedFile &
                               <button
                                 type="button"
                                 onClick={removeFile}
-                                className="p-1 rounded text-slate-400 hover:text-white transition cursor-pointer"
+                                aria-label="Eliminar comprobante adjunto"
+                                className="p-1 rounded text-slate-400 hover:text-white transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-500"
                                 title="Eliminar archivo"
                               >
                                 <X className="w-4 h-4" />
@@ -727,11 +742,11 @@ ${phone ? `Teléfono: ${phone}\n` : ""}${method === "transfer" ? (selectedFile &
                             </div>
                           )}
 
-                          {fileError && (
-                            <p className="text-[11px] text-rose-400 flex items-center gap-1">
+                          {fileError ? (
+                            <p className="text-[11px] text-rose-400 flex items-center gap-1" role="alert">
                               <AlertCircle className="w-3 h-3" /> {fileError}
                             </p>
-                          )}
+                          ) : null}
                         </div>
                       ) : (
                         <div className="bg-[#111827] rounded-lg p-3 border border-slate-800/80 text-[11px] text-slate-400 leading-relaxed animate-fade-in">
@@ -758,57 +773,58 @@ ${phone ? `Teléfono: ${phone}\n` : ""}${method === "transfer" ? (selectedFile &
               {/* CUPON DE DESCUENTO */}
               <section className="bg-[#111827] border border-slate-800 rounded-xl p-4 space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                  <label htmlFor="coupon-code-field" className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
                     <Sparkles className="w-3.5 h-3.5 text-amber-400" />
                     Cupón de descuento
                   </label>
-                  {coupon && (
+                  {coupon ? (
                     <span className="text-[11px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
                       -{coupon.discount.toLocaleString("es-PY")} PYG
                     </span>
-                  )}
+                  ) : null}
                 </div>
 
                 <div className="flex gap-2">
                   <input
+                    id="coupon-code-field"
                     type="text"
                     placeholder="Código de cupón (opcional)"
                     value={couponCode}
                     onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                    className="min-w-0 flex-1 bg-[#0B0F17] border border-slate-700/80 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 text-xs font-mono uppercase"
+                    className="min-w-0 flex-1 bg-[#0B0F17] border border-slate-700/80 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 focus-visible:ring-2 focus-visible:ring-emerald-500 text-xs font-mono uppercase transition"
                   />
                   <button
                     type="button"
                     onClick={() => void applyCoupon()}
                     disabled={couponLoading || !couponCode.trim()}
-                    className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white font-medium rounded-lg text-xs transition cursor-pointer"
+                    className="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white font-medium rounded-lg text-xs transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500"
                   >
                     {couponLoading ? "..." : "Aplicar"}
                   </button>
                 </div>
 
-                {coupon && (
+                {coupon ? (
                   <p className="text-[11px] text-emerald-400 flex items-center gap-1 font-medium">
                     <CheckCircle2 className="w-3 h-3" />
                     Cupón aplicado: {coupon.name} (-{coupon.discount.toLocaleString("es-PY")} PYG)
                   </p>
-                )}
+                ) : null}
 
-                {couponError && (
-                  <p className="text-[11px] text-rose-400 flex items-center gap-1">
+                {couponError ? (
+                  <p className="text-[11px] text-rose-400 flex items-center gap-1" role="alert">
                     <AlertCircle className="w-3 h-3" />
                     {couponError}
                   </p>
-                )}
+                ) : null}
               </section>
 
               {/* ERRORES GENERALES */}
-              {error && (
-                <div className="p-3.5 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-200 text-xs flex items-start gap-2.5">
+              {error ? (
+                <div className="p-3.5 rounded-xl bg-rose-950/60 border border-rose-800/80 text-rose-200 text-xs flex items-start gap-2.5" role="alert">
                   <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
                   <span>{error}</span>
                 </div>
-              )}
+              ) : null}
 
               {/* BOTON DE ENVIO PRIMARIO */}
               <div className="pt-1">
@@ -846,11 +862,11 @@ ${phone ? `Teléfono: ${phone}\n` : ""}${method === "transfer" ? (selectedFile &
                 <h1 className="text-base sm:text-lg font-bold text-white mt-2 leading-snug">
                   {course.name}
                 </h1>
-                {course.description && (
+                {course.description ? (
                   <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
                     {course.description}
                   </p>
-                )}
+                ) : null}
               </div>
 
               {/* DESGLOSE */}
@@ -860,12 +876,12 @@ ${phone ? `Teléfono: ${phone}\n` : ""}${method === "transfer" ? (selectedFile &
                   <span className="font-mono text-white">{course.price_pyg.toLocaleString("es-PY")} PYG</span>
                 </div>
 
-                {coupon && (
+                {coupon ? (
                   <div className="flex justify-between items-center text-emerald-400 font-medium">
                     <span>Descuento ({coupon.name}):</span>
                     <span className="font-mono">-{coupon.discount.toLocaleString("es-PY")} PYG</span>
                   </div>
-                )}
+                ) : null}
 
                 <div className="pt-2 border-t border-slate-800 flex justify-between items-baseline">
                   <span className="font-semibold text-slate-200">Total a Pagar:</span>

@@ -54,6 +54,55 @@ CREATE INDEX IF NOT EXISTS idx_courses_uuid ON public.courses(course_uuid);
 CREATE INDEX IF NOT EXISTS idx_enrollments_student ON public.enrollments(student_id);
 CREATE INDEX IF NOT EXISTS idx_enrollments_course ON public.enrollments(course_id);
 
+-- RLS (Row Level Security) Policies
+ALTER TABLE public.courses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.students ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.enrollments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
+
+-- Cursos: lectura pública de activos, escritura restringida a service_role
+CREATE POLICY "Allow public read of active courses"
+    ON public.courses
+    FOR SELECT
+    TO anon, authenticated
+    USING (is_active = true);
+
+CREATE POLICY "Allow service_role full access on courses"
+    ON public.courses
+    FOR ALL
+    TO service_role
+    USING (true)
+    WITH CHECK (true);
+
+-- Alumnos y Matrículas: acceso exclusivo vía backend (service_role)
+CREATE POLICY "Allow service_role full access on students"
+    ON public.students
+    FOR ALL
+    TO service_role
+    USING (true)
+    WITH CHECK (true);
+
+CREATE POLICY "Allow service_role full access on enrollments"
+    ON public.enrollments
+    FOR ALL
+    TO service_role
+    USING (true)
+    WITH CHECK (true);
+
+-- Configuraciones: lectura pública, escritura exclusiva vía backend
+CREATE POLICY "Allow public read of settings"
+    ON public.settings
+    FOR SELECT
+    TO anon, authenticated
+    USING (true);
+
+CREATE POLICY "Allow service_role full access on settings"
+    ON public.settings
+    FOR ALL
+    TO service_role
+    USING (true)
+    WITH CHECK (true);
+
 -- Cursos Iniciales de LearnHouse
 INSERT INTO public.courses (name, course_uuid, description, price_pyg, price_usd, is_active)
 VALUES 

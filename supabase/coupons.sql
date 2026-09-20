@@ -15,4 +15,22 @@ ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS amount_original NUMERIC NOT N
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS discount_amount NUMERIC NOT NULL DEFAULT 0;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS amount_due NUMERIC NOT NULL DEFAULT 0;
 
+-- Índices de búsqueda y Foreign Keys
 CREATE INDEX IF NOT EXISTS idx_coupons_active ON public.coupons(is_active);
+CREATE INDEX IF NOT EXISTS idx_orders_coupon_id ON public.orders(coupon_id);
+
+-- RLS en Cupones
+ALTER TABLE public.coupons ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow public read of active coupons"
+    ON public.coupons
+    FOR SELECT
+    TO anon, authenticated
+    USING (is_active = true);
+
+CREATE POLICY "Allow service_role full access on coupons"
+    ON public.coupons
+    FOR ALL
+    TO service_role
+    USING (true)
+    WITH CHECK (true);

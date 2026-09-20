@@ -18,10 +18,23 @@ CREATE TABLE IF NOT EXISTS public.orders (
   updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Índices de consulta rápida y Foreign Keys
 CREATE INDEX IF NOT EXISTS idx_orders_status_created_at ON public.orders(status, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_orders_customer_email ON public.orders(customer_email);
+CREATE INDEX IF NOT EXISTS idx_orders_course_id ON public.orders(course_id);
+CREATE INDEX IF NOT EXISTS idx_orders_enrollment_id ON public.orders(enrollment_id);
 CREATE UNIQUE INDEX IF NOT EXISTS enrollments_student_course_unique
   ON public.enrollments(student_id, course_id);
+
+-- RLS en Orders: gestión exclusiva vía backend seguro
+ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Allow service_role full access on orders"
+    ON public.orders
+    FOR ALL
+    TO service_role
+    USING (true)
+    WITH CHECK (true);
 
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES ('payment-proofs', 'payment-proofs', false, 5242880,

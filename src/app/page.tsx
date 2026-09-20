@@ -662,8 +662,10 @@ ${successData.magicLink}`
         <button
           type="button"
           onClick={() => setMobileNavOpen(!mobileNavOpen)}
-          className="p-2 rounded-lg bg-slate-800 text-slate-300 hover:text-white transition cursor-pointer"
-          aria-label="Abrir menú"
+          className="p-2 rounded-lg bg-slate-800 text-slate-300 hover:text-white transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+          aria-label={mobileNavOpen ? "Cerrar menú principal" : "Abrir menú principal"}
+          aria-expanded={mobileNavOpen}
+          aria-controls="mobile-nav-drawer"
         >
           {mobileNavOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
         </button>
@@ -671,13 +673,14 @@ ${successData.magicLink}`
 
       {/* Mobile Drawer */}
       {mobileNavOpen && (
-        <div className="lg:hidden fixed inset-x-0 top-14 bg-[#0B0F17] border-b border-slate-800 p-4 z-30 space-y-1.5 shadow-2xl animate-fade-in">
+        <div id="mobile-nav-drawer" className="lg:hidden fixed inset-x-0 top-14 bg-[#0B0F17] border-b border-slate-800 p-4 z-30 space-y-1.5 shadow-2xl animate-fade-in">
           {navItems.map((item) => (
             <button
               key={item.id}
               type="button"
               onClick={() => switchTab(item.id)}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+              aria-current={activeTab === item.id ? "page" : undefined}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
                 activeTab === item.id
                   ? "bg-sky-500/15 text-sky-400 border border-sky-500/30"
                   : "text-slate-400 hover:text-slate-200 hover:bg-slate-900"
@@ -738,13 +741,14 @@ ${successData.magicLink}`
         </div>
 
         {/* Navigation Items */}
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+        <nav aria-label="Navegación principal" className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {navItems.map((item) => (
             <button
               key={item.id}
               type="button"
               onClick={() => switchTab(item.id)}
-              className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
+              aria-current={activeTab === item.id ? "page" : undefined}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500 ${
                 activeTab === item.id
                   ? "bg-sky-500/15 text-sky-400 border border-sky-500/30 shadow-sm"
                   : "text-slate-400 hover:text-slate-200 hover:bg-slate-900/80 border border-transparent"
@@ -2205,7 +2209,8 @@ ${successData.magicLink}`
                   <button
                     type="button"
                     onClick={() => setPreviewCheckoutSlug(null)}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+                    aria-label="Cerrar vista previa de checkout"
                     title="Cerrar vista previa"
                   >
                     <X className="w-5 h-5" />
@@ -2238,7 +2243,9 @@ ${successData.magicLink}`
                 <button
                   type="button"
                   onClick={() => setEditingCoupon(null)}
-                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+                  className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-500"
+                  aria-label="Cerrar modal de edición de cupón"
+                  title="Cerrar"
                 >
                   <X className="w-4 h-4" />
                 </button>
