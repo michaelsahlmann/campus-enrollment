@@ -651,8 +651,8 @@ ${successData.magicLink}`
       {/* Mobile Header */}
       <header className="lg:hidden border-b border-slate-800 bg-[#0B0F17] px-4 py-3 flex items-center justify-between sticky top-0 z-40">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center shadow-md">
-            <GraduationCap className="w-4 h-4 text-white" />
+          <div className="w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center shadow-sm">
+            <GraduationCap className="w-4 h-4 text-sky-400" />
           </div>
           <div>
             <span className="font-bold text-sm text-white leading-none block">Campus Portal</span>
@@ -691,7 +691,7 @@ ${successData.magicLink}`
                 <span>{item.label}</span>
               </div>
               {item.badge !== undefined && item.badge > 0 && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono tabular-nums font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                   {item.badge}
                 </span>
               )}
@@ -727,8 +727,8 @@ ${successData.magicLink}`
       <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 bg-[#0B0F17] border-r border-slate-800/80 z-30">
         {/* Sidebar Brand */}
         <div className="h-16 flex items-center gap-3 px-5 border-b border-slate-800/80 bg-slate-950/40">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-sky-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-sky-500/20 shrink-0">
-            <GraduationCap className="w-5 h-5 text-white" />
+          <div className="w-9 h-9 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center shadow-sm shrink-0">
+            <GraduationCap className="w-5 h-5 text-sky-400" />
           </div>
           <div className="min-w-0">
             <span className="font-bold text-sm text-white tracking-tight block truncate leading-tight">
@@ -966,7 +966,7 @@ ${successData.magicLink}`
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full mt-2 py-3 px-6 rounded-xl bg-gradient-to-r from-sky-500 to-indigo-600 hover:from-sky-400 hover:to-indigo-500 text-white font-semibold flex items-center justify-center gap-2 shadow-lg shadow-sky-500/20 disabled:opacity-50 transition cursor-pointer"
+                    className="w-full mt-2 py-3 px-6 rounded-xl bg-sky-500 hover:bg-sky-400 active:scale-[0.99] text-white font-semibold flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 transition cursor-pointer"
                   >
                     {isSubmitting ? (
                       <>
@@ -1225,8 +1225,8 @@ ${successData.magicLink}`
                       students.map((st) => (
                         <tr key={st.id} className="hover:bg-slate-800/40">
                           <td className="py-3 px-4 font-semibold text-white">{st.name}</td>
-                          <td className="py-3 px-4 font-mono text-sky-400">{st.email}</td>
-                          <td className="py-3 px-4 font-mono text-emerald-400">
+                          <td className="py-3 px-4 font-mono tabular-nums text-sky-400">{st.email}</td>
+                          <td className="py-3 px-4 font-mono tabular-nums text-emerald-400">
                             #{st.learnhouse_user_id || "—"}
                           </td>
                           <td className="py-3 px-4">
@@ -1269,7 +1269,7 @@ ${successData.magicLink}`
                               <span className="text-slate-500">—</span>
                             )}
                           </td>
-                          <td className="py-3 px-4 text-slate-500">
+                          <td className="py-3 px-4 text-slate-500 font-mono tabular-nums">
                             {new Date(st.created_at).toLocaleDateString()}
                           </td>
                         </tr>
@@ -1542,7 +1542,7 @@ ${successData.magicLink}`
                             {item.courses?.name || "Curso asociado"}
                           </p>
                         </div>
-                        <span className="text-xs font-bold text-emerald-400 font-mono">
+                        <span className="text-xs font-bold text-emerald-400 font-mono tabular-nums">
                           {item.price_pyg.toLocaleString()} PYG
                         </span>
                       </div>
@@ -1924,7 +1924,7 @@ ${successData.magicLink}`
                                 c.is_active ? "bg-emerald-400" : "bg-slate-600"
                               }`}
                             />
-                            <span className="font-mono text-base font-bold text-white tracking-wider">
+                            <span className="font-mono tabular-nums text-base font-bold text-white tracking-wider">
                               {c.code}
                             </span>
                           </div>
@@ -1940,7 +1940,7 @@ ${successData.magicLink}`
 
                         <p className="text-xs text-slate-300 font-medium">{c.name}</p>
 
-                        <div className="inline-block px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono">
+                        <div className="inline-block px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono tabular-nums">
                           {c.discount_type === "percentage"
                             ? `${c.discount_value}% OFF`
                             : `-${Number(c.discount_value).toLocaleString()} PYG`}

@@ -1,8 +1,12 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #06080D;
+  --foreground: #F1F5F9;
+  --card-bg: #0B0F17;
+  --card-surface: #111827;
+  --border-hairline: rgba(51, 65, 85, 0.7);
+  --accent-emerald: #10B981;
 }
 
 @theme inline {
@@ -12,15 +16,17 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html,
+body {
+  overflow-x: clip;
+  background-color: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Numeración tabular para alineación vertical en finanzas, precios y tablas */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }
