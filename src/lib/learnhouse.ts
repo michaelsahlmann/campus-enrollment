@@ -9,7 +9,7 @@ const LEARNHOUSE_API_URL = sanitizeBaseUrl(process.env.LEARNHOUSE_API_URL);
 
 const LEARNHOUSE_ORG_SLUG = (process.env.LEARNHOUSE_ORG_SLUG || "default").trim();
 
-const LEARNHOUSE_API_TOKEN = process.env.LEARNHOUSE_API_TOKEN?.trim() || "lh_dc8RpUb1xAgq2p0LBz0qXMmpIe9EiBeclv5EmgQmISc";
+const LEARNHOUSE_API_TOKEN = process.env.LEARNHOUSE_API_TOKEN?.trim() || "";
 
 export const DEFAULT_COURSE_UUID = "course_8bbc2b81-c213-4c9d-86f2-ce613dc6cdac";
 
@@ -23,7 +23,7 @@ export function generateSecurePassword(): string {
   const charsNumbers = "23456789";
   const charsSpecial = "!@#$%&*";
 
-  const randomFrom = (set: string) => set[Math.floor(Math.random() * set.length)];
+  const randomFrom = (set: string) => set[randomInt(set.length)];
 
   // Garantizar al menos un carácter de cada tipo requerido
   const pass = [
@@ -39,8 +39,11 @@ export function generateSecurePassword(): string {
     pass.push(randomFrom(allChars));
   }
 
-  // Mezclar caracteres
-  return pass.sort(() => Math.random() - 0.5).join("");
+  for (let index = pass.length - 1; index > 0; index -= 1) {
+    const swapIndex = randomInt(index + 1);
+    [pass[index], pass[swapIndex]] = [pass[swapIndex], pass[index]];
+  }
+  return pass.join("");
 }
 
 /**
@@ -53,7 +56,7 @@ export function generateCleanUsername(name: string, email: string): string {
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]/g, "")
     .slice(0, 15);
-  const suffix = Math.floor(100 + Math.random() * 900);
+  const suffix = randomInt(100, 1000);
   return `${base || "user"}_${suffix}`;
 }
 
@@ -151,7 +154,7 @@ export class LearnHouseClient {
     email: string;
     name: string;
     password?: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
   }): Promise<{ user: LearnHouseUser; tempPassword: string }> {
     const email = params.email.trim().toLowerCase();
     const parts = params.name.trim().split(/\s+/);
@@ -294,7 +297,7 @@ export class LearnHouseClient {
     name: string;
     email: string;
     courseUuid: string;
-    metadata?: Record<string, any>;
+    metadata?: Record<string, unknown>;
     password?: string;
   }) {
     let user = await this.getUserByEmail(params.email);
@@ -332,7 +335,7 @@ export interface StudentEnrollmentInput {
   fullName: string;
   email: string;
   courseUuid?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   password?: string;
 }
 
@@ -440,4 +443,5 @@ export function generateWelcomeEmailHtml(params: WelcomeEmailParams): string {
 </body>
 </html>`;
 }
+import { randomInt } from "node:crypto";
 

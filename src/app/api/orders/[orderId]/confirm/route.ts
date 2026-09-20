@@ -22,15 +22,12 @@ export async function POST(_request: Request, props: { params: Promise<{ orderId
     if (updateError) throw updateError;
     return NextResponse.json({
       success: true,
-      magicLink: result.magicLink,
       student: {
         ...result.user,
         name: order.customer_name,
         phone: order.customer_phone || "",
         isNewUser: result.isNewUser,
-        tempPassword: result.tempPassword,
       },
-      tempPassword: result.tempPassword,
       isNewUser: result.isNewUser,
       course,
     });

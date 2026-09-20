@@ -28,7 +28,6 @@ export async function GET() {
           amount_paid,
           currency,
           learnhouse_status,
-          magic_link,
           created_at,
           courses (
             id,

@@ -136,14 +136,11 @@ export async function POST(req: NextRequest) {
           email: studentEmail,
           phone: phone || "",
           isNewUser: lhResult.isNewUser,
-          tempPassword: lhResult.tempPassword,
         },
-        tempPassword: lhResult.tempPassword,
         course: {
           uuid: course_uuid,
           name: finalCourseName,
         },
-        magicLink: lhResult.magicLink,
         supabaseRecord,
       },
     });
