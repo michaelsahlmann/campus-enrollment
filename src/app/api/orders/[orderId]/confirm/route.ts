@@ -20,7 +20,20 @@ export async function POST(_request: Request, props: { params: Promise<{ orderId
     if (enrollmentError || !enrollment) throw enrollmentError || new Error("No se pudo guardar la matrícula.");
     const { error: updateError } = await supabase.from("orders").update({ status: "paid", reviewed_at: new Date().toISOString(), enrollment_id: enrollment.id }).eq("id", order.id);
     if (updateError) throw updateError;
-    return NextResponse.json({ success: true, magicLink: result.magicLink, student: result.user, course });
+    return NextResponse.json({
+      success: true,
+      magicLink: result.magicLink,
+      student: {
+        ...result.user,
+        name: order.customer_name,
+        phone: order.customer_phone || "",
+        isNewUser: result.isNewUser,
+        tempPassword: result.tempPassword,
+      },
+      tempPassword: result.tempPassword,
+      isNewUser: result.isNewUser,
+      course,
+    });
   } catch (cause: unknown) {
     console.error("Error al confirmar orden:", cause);
     return NextResponse.json({ error: cause instanceof Error ? cause.message : "No se pudo confirmar la orden." }, { status: 500 });
