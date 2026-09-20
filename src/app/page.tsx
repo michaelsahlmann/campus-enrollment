@@ -189,6 +189,15 @@ ${successData.magicLink}`
               <ExternalLink className="w-3.5 h-3.5 text-sky-400" />
               Ver Campus
             </a>
+            <button
+              onClick={async () => {
+                await fetch("/api/auth/logout", { method: "POST" });
+                window.location.href = "/login";
+              }}
+              className="text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-700 bg-slate-800 text-slate-400 hover:text-red-400 hover:border-red-800 transition"
+            >
+              Salir
+            </button>
           </div>
         </div>
 
@@ -700,7 +709,7 @@ ${successData.magicLink}`
                   <div># Conexión LearnHouse LMS (Ya configurado)</div>
                   <div>LEARNHOUSE_API_URL=https://campus.michaelsahlmann.com</div>
                   <div>LEARNHOUSE_ORG_SLUG=default</div>
-                  <div>LEARNHOUSE_API_TOKEN=lh_REDACTED_TOKEN</div>
+                  <div>LEARNHOUSE_API_TOKEN=lh_*****************************</div>
                   <div className="pt-2"># Conexión Supabase</div>
                   <div>NEXT_PUBLIC_SUPABASE_URL=https://tu-proyecto.supabase.co</div>
                   <div>NEXT_PUBLIC_SUPABASE_ANON_KEY=tu-anon-key</div>
