@@ -26,8 +26,10 @@ import {
   Menu,
   LogOut,
   Building2,
+  Clock,
 } from "lucide-react";
 import BrandLogo from "@/components/brand-logo";
+import BackgroundPaths from "@/components/background-paths";
 import { DEFAULT_COURSES, CourseItem } from "@/lib/courses";
 import { BankSettings, DEFAULT_BANK_SETTINGS } from "@/lib/settings";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -224,6 +226,30 @@ export default function CampusPortalPage() {
     description: string;
   } | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // Control de Accesos Temporales (Trials)
+  const [isRevokingTrials, setIsRevokingTrials] = useState(false);
+  const [trialRevokeResult, setTrialRevokeResult] = useState<string | null>(null);
+
+  const auditTrials = async () => {
+    setIsRevokingTrials(true);
+    setTrialRevokeResult(null);
+    try {
+      const res = await fetch("/api/cron/revoke-trials", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Error al verificar trials.");
+      setTrialRevokeResult(
+        data.revokedCount > 0
+          ? `Se revocaron ${data.revokedCount} accesos de prueba (trials) vencidos en LearnHouse.`
+          : data.message || "Todos los accesos de prueba están vigentes."
+      );
+      await fetchStudents();
+    } catch (err: unknown) {
+      setTrialRevokeResult(err instanceof Error ? err.message : "Error al auditar trials.");
+    } finally {
+      setIsRevokingTrials(false);
+    }
+  };
 
   // Load students
   const fetchStudents = async () => {
@@ -719,25 +745,25 @@ ${confirmedOrderCredentials.magicLink}
   ];
 
   return (
-    <div className="min-h-screen bg-[#050507] text-[#F4F4F6] font-sans antialiased flex flex-col lg:flex-row relative selection:bg-sky-500/20 selection:text-sky-200">
-      {/* Ambient top luminance */}
-      <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[1100px] h-[350px] bg-gradient-to-b from-sky-500/[0.04] via-emerald-500/[0.02] to-transparent blur-3xl pointer-events-none -z-10" />
+    <div className="min-h-screen bg-[#050505] text-[#d6d6dc] font-body antialiased flex flex-col lg:flex-row relative selection:bg-[#F26101]/30 selection:text-white">
+      {/* Fondo ambiental reactivo oficial Varkentis */}
+      <BackgroundPaths />
 
       {/* Mobile Header */}
-      <header className="lg:hidden border-b border-white/[0.07] bg-[#07080C]/85 backdrop-blur-2xl px-4 py-3 flex items-center justify-between sticky top-0 z-40">
+      <header className="lg:hidden border-b border-white/10 bg-[#050505]/90 backdrop-blur-2xl px-4 py-3 flex items-center justify-between sticky top-0 z-40">
         <div className="flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-white/[0.06] border border-white/[0.1] flex items-center justify-center shadow-sm text-sky-400">
-            <BrandLogo className="w-4 h-4" />
+          <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shadow-sm text-white">
+            <BrandLogo className="w-4 h-4 text-white" />
           </div>
           <div>
-            <span className="font-semibold text-sm text-white leading-none block tracking-tight">Campus Portal</span>
-            <span className="text-[10px] text-zinc-400 leading-none block mt-0.5">Admin & Checkouts</span>
+            <span className="font-heading text-sm text-white leading-none block tracking-tight">Instituto Varkentis</span>
+            <span className="text-[10px] text-[#D9E8F5]/60 font-mono-system leading-none block mt-0.5">Campus & Checkouts</span>
           </div>
         </div>
         <button
           type="button"
           onClick={() => setMobileNavOpen(!mobileNavOpen)}
-          className="p-2 rounded-xl bg-white/[0.06] border border-white/[0.08] text-zinc-300 hover:text-white transition cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-400"
+          className="p-2 rounded-full bg-white/5 border border-white/10 text-zinc-300 hover:text-white transition cursor-pointer"
           aria-label={mobileNavOpen ? "Cerrar menú principal" : "Abrir menú principal"}
           aria-expanded={mobileNavOpen}
           aria-controls="mobile-nav-drawer"
@@ -748,39 +774,39 @@ ${confirmedOrderCredentials.magicLink}
 
       {/* Mobile Drawer */}
       {mobileNavOpen && (
-        <div id="mobile-nav-drawer" className="lg:hidden fixed inset-x-0 top-14 bg-[#07080C]/95 backdrop-blur-2xl border-b border-white/[0.08] p-4 z-30 space-y-1.5 shadow-2xl animate-fade-in">
+        <div id="mobile-nav-drawer" className="lg:hidden fixed inset-x-0 top-14 bg-[#0A0E17]/95 backdrop-blur-2xl border-b border-white/10 p-4 z-30 space-y-1.5 shadow-2xl animate-fade-in">
           {navItems.map((item) => (
             <button
               key={item.id}
               type="button"
               onClick={() => switchTab(item.id)}
               aria-current={activeTab === item.id ? "page" : undefined}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-400 ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition cursor-pointer ${
                 activeTab === item.id
-                  ? "bg-white/[0.08] text-white border border-white/[0.12] shadow-sm"
-                  : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04] border border-transparent"
+                  ? "bg-white/10 text-white border border-[#F26101]/40 shadow-sm"
+                  : "text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent"
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <item.icon className="w-4 h-4" />
-                <span>{item.label}</span>
+                <item.icon className="w-4 h-4 text-[#F26101]" />
+                <span className="font-mono-system">{item.label}</span>
               </div>
               {item.badge !== undefined && item.badge > 0 && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono tabular-nums font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono tabular-nums font-bold bg-[#F26101]/20 text-[#F26101] border border-[#F26101]/30">
                   {item.badge}
                 </span>
               )}
             </button>
           ))}
 
-          <div className="pt-3 mt-2 border-t border-white/[0.06] flex items-center justify-between text-xs">
+          <div className="pt-3 mt-2 border-t border-white/10 flex items-center justify-between text-xs font-mono">
             <a
               href="https://campus.michaelsahlmann.com"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 text-zinc-400 hover:text-white transition"
             >
-              <ExternalLink className="w-3.5 h-3.5 text-sky-400" />
+              <ExternalLink className="w-3.5 h-3.5 text-[#F26101]" />
               Ver Campus
             </a>
             <button
@@ -796,18 +822,18 @@ ${confirmedOrderCredentials.magicLink}
       )}
 
       {/* Left Sidebar for Desktop */}
-      <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 bg-[#07080C]/85 backdrop-blur-2xl border-r border-white/[0.07] z-30">
+      <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 bg-[#0A0E17]/85 backdrop-blur-2xl border-r border-white/10 z-30">
         {/* Sidebar Brand */}
-        <div className="h-16 flex items-center gap-3 px-5 border-b border-white/[0.07]">
-          <div className="w-9 h-9 rounded-xl bg-white/[0.06] border border-white/[0.1] flex items-center justify-center shadow-sm shrink-0 text-sky-400">
-            <BrandLogo className="w-5 h-5" />
+        <div className="h-16 flex items-center gap-3 px-5 border-b border-white/10">
+          <div className="w-9 h-9 rounded-full bg-white/5 border border-white/10 flex items-center justify-center shadow-sm shrink-0">
+            <BrandLogo className="w-5 h-5 text-white" />
           </div>
           <div className="min-w-0">
-            <span className="font-semibold text-sm text-white tracking-tight block truncate leading-tight">
-              Campus Portal
+            <span className="font-heading text-sm text-white tracking-tight block truncate leading-tight">
+              Instituto Varkentis
             </span>
-            <span className="text-[10px] text-zinc-400 block truncate leading-tight mt-0.5">
-              Admin & Checkouts
+            <span className="text-[10px] text-[#D9E8F5]/60 font-mono-system block truncate leading-tight mt-0.5">
+              Campus & Checkouts
             </span>
           </div>
         </div>
@@ -820,18 +846,18 @@ ${confirmedOrderCredentials.magicLink}
               type="button"
               onClick={() => switchTab(item.id)}
               aria-current={activeTab === item.id ? "page" : undefined}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-sky-400 ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition cursor-pointer ${
                 activeTab === item.id
-                  ? "bg-white/[0.08] text-white border border-white/[0.12] shadow-sm"
+                  ? "bg-white/10 text-white border border-[#F26101]/40 shadow-sm"
                   : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03] border border-transparent"
               }`}
             >
               <div className="flex items-center gap-2.5">
-                <item.icon className={`w-4 h-4 ${activeTab === item.id ? "text-sky-400" : "text-zinc-400"}`} />
-                <span>{item.label}</span>
+                <item.icon className={`w-4 h-4 ${activeTab === item.id ? "text-[#F26101]" : "text-zinc-400"}`} />
+                <span className="font-mono-system">{item.label}</span>
               </div>
               {item.badge !== undefined && item.badge > 0 && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono tabular-nums font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/25">
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono tabular-nums font-bold bg-[#F26101]/20 text-[#F26101] border border-[#F26101]/30">
                   {item.badge}
                 </span>
               )}
@@ -1277,23 +1303,42 @@ ${confirmedOrderCredentials.magicLink}
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-semibold text-white tracking-tight flex items-center gap-2.5">
-                  <Users className="w-5 h-5 text-sky-400" />
+                <h2 className="text-xl font-heading text-white tracking-tight flex items-center gap-2.5">
+                  <Users className="w-5 h-5 text-[#F26101]" />
                   Alumnos Registrados en Supabase
                 </h2>
-                <p className="text-xs text-zinc-400 mt-1">
-                  Historial de alumnos habilitados y sus matrículas en el campus.
+                <p className="text-xs text-[#D9E8F5]/60 mt-1 font-body">
+                  Historial de alumnos habilitados, vigencia de matrículas y control de accesos trial.
                 </p>
               </div>
-              <button
-                onClick={fetchStudents}
-                disabled={isLoadingStudents}
-                className="flex items-center gap-2 px-3.5 py-2 bg-white/[0.06] hover:bg-white/[0.1] text-zinc-200 border border-white/[0.08] rounded-xl text-xs font-semibold transition cursor-pointer"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isLoadingStudents ? "animate-spin" : ""}`} />
-                Actualizar
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={auditTrials}
+                  disabled={isRevokingTrials}
+                  className="flex items-center gap-2 px-3.5 py-2 bg-[#F26101]/10 hover:bg-[#F26101]/20 text-[#F26101] border border-[#F26101]/30 rounded-full text-xs font-mono font-semibold transition cursor-pointer"
+                  title="Auditar y revocar accesos temporales vencidos en LearnHouse"
+                >
+                  <Clock className={`w-3.5 h-3.5 ${isRevokingTrials ? "animate-spin" : ""}`} />
+                  <span>{isRevokingTrials ? "Auditando…" : "Auditar Trials"}</span>
+                </button>
+                <button
+                  onClick={fetchStudents}
+                  disabled={isLoadingStudents}
+                  className="flex items-center gap-2 px-3.5 py-2 bg-white/5 hover:bg-white/10 text-zinc-200 border border-white/10 rounded-full text-xs font-mono font-semibold transition cursor-pointer"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isLoadingStudents ? "animate-spin" : ""}`} />
+                  Actualizar
+                </button>
+              </div>
             </div>
+
+            {trialRevokeResult && (
+              <div className="p-3.5 rounded-xl bg-[#F26101]/10 border border-[#F26101]/30 text-white text-xs flex items-center justify-between font-mono animate-fade-in">
+                <span>{trialRevokeResult}</span>
+                <button type="button" onClick={() => setTrialRevokeResult(null)} className="text-zinc-400 hover:text-white cursor-pointer px-2">✕</button>
+              </div>
+            )}
 
             {!supabaseConfigured && (
               <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs flex items-center gap-3">
