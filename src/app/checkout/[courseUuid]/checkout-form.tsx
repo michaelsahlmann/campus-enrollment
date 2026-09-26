@@ -36,11 +36,13 @@ type Course = {
 export default function CheckoutForm({
   course,
   checkoutSlug,
+  checkoutTitle,
   bankSettings = DEFAULT_BANK_SETTINGS,
   initialCoupon,
 }: {
   course: Course;
   checkoutSlug: string;
+  checkoutTitle?: string;
   bankSettings?: BankSettings;
   initialCoupon?: string;
 }) {
@@ -243,7 +245,7 @@ export default function CheckoutForm({
   // 1. PANTALLA DE ALTA INMEDIATA (CUPON 100% / ACCESO BONIFICADO)
   if (autoEnrolledData && reference) {
     const whatsappText = `¡Hola! Acabo de activar mi acceso a Instituto Varkentis para el programa "${course.name}".
-Referencia: #${reference}
+Referencia de Matrícula: #${reference}
 Alumno: ${name}
 Correo: ${email}${autoEnrolledData.tempPassword ? `\nContraseña generada: ${autoEnrolledData.tempPassword}` : ""}`;
 
@@ -251,20 +253,42 @@ Correo: ${email}${autoEnrolledData.tempPassword ? `\nContraseña generada: ${aut
       <main className="min-h-screen bg-[#050505] text-[#d6d6dc] py-16 px-4 sm:px-6 flex flex-col items-center justify-center antialiased relative overflow-hidden">
         <BackgroundPaths />
 
-        <div className="max-w-xl w-full varkentis-card-elevated p-8 sm:p-12 space-y-8 relative z-10 border-[#F26101]/30">
+        <div className="max-w-xl w-full varkentis-card-elevated p-8 sm:p-12 space-y-7 relative z-10 border-emerald-500/30">
           <div className="text-center space-y-4">
-            <div className="w-16 h-16 rounded-full bg-[#F26101]/15 text-[#F26101] border border-[#F26101]/40 flex items-center justify-center mx-auto shadow-[0_0_40px_rgba(242,97,1,0.35)]">
-              <Sparkles className="w-8 h-8" />
+            <div className="w-16 h-16 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mx-auto shadow-[0_0_40px_rgba(16,185,129,0.35)]">
+              <Sparkles className="w-8 h-8 text-emerald-400" />
             </div>
             <div>
-              <span className="font-mono-system text-[10px] font-bold tracking-[0.2em] text-[#F26101] uppercase bg-[#F26101]/10 px-3.5 py-1 rounded-full border border-[#F26101]/30 inline-block mb-3">
-                Acceso Oficial Concedido
+              <span className="font-mono-system text-[10px] font-bold tracking-[0.2em] text-emerald-400 uppercase bg-emerald-500/10 px-3.5 py-1 rounded-full border border-emerald-500/30 inline-block mb-3">
+                ¡Acceso Oficial Concedido · 100% Bonificado!
               </span>
               <h1 className="text-3xl sm:text-4xl font-heading text-white tracking-tight">
-                Bienvenido a Instituto Varkentis
+                ¡Bienvenido a Instituto Varkentis!
               </h1>
               <p className="text-xs sm:text-sm text-[#D9E8F5]/80 mt-2 max-w-md mx-auto font-body">
-                Tu matrícula para <strong className="text-white font-semibold">{course.name}</strong> ha sido liberada y ya está activa en el Campus Virtual.
+                Tu matrícula para el programa <strong className="text-white font-semibold">{course.name}</strong> ha sido liberada y ya está activa en el Campus Virtual.
+              </p>
+              {checkoutTitle && checkoutTitle !== course.name ? (
+                <div className="mt-2">
+                  <span className="font-mono text-[10px] text-zinc-400 bg-white/5 border border-white/10 px-2.5 py-0.5 rounded-full inline-block">
+                    Modalidad / Promoción: {checkoutTitle}
+                  </span>
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          {/* Banner Principal en Verde Esmeralda */}
+          <div className="rounded-2xl bg-emerald-950/40 border border-emerald-500/35 p-4 sm:p-5 flex items-start gap-3.5 text-left shadow-[0_0_30px_rgba(16,185,129,0.12)]">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+              <Mail className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <h2 className="text-sm font-semibold text-emerald-300 font-heading">
+                Vas a recibir un correo electrónico con tus accesos
+              </h2>
+              <p className="text-xs text-emerald-200/80 leading-relaxed font-body">
+                También enviamos tus datos de acceso oficiales a <strong className="text-white font-mono break-all">{email}</strong>{phone ? <> y a tu WhatsApp <strong className="text-white font-mono">{phone}</strong></> : null}.
               </p>
             </div>
           </div>
@@ -293,7 +317,7 @@ Correo: ${email}${autoEnrolledData.tempPassword ? `\nContraseña generada: ${aut
                         setCopiedPass(true);
                         setTimeout(() => setCopiedPass(false), 2000);
                       }}
-                      className="text-[10px] text-[#F26101] hover:underline flex items-center gap-1 cursor-pointer"
+                      className="text-[10px] text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
                     >
                       {copiedPass ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
                       <span>{copiedPass ? "¡Copiada!" : "Copiar"}</span>
@@ -313,7 +337,7 @@ Correo: ${email}${autoEnrolledData.tempPassword ? `\nContraseña generada: ${aut
               href={autoEnrolledData.magicLink}
               target="_blank"
               rel="noopener noreferrer"
-              className="varkentis-btn-action w-full py-4 px-6 text-xs sm:text-sm font-black flex items-center justify-center gap-2.5 shadow-[0_0_30px_rgba(242,97,1,0.4)]"
+              className="w-full py-4 px-6 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-heading text-xs sm:text-sm font-black flex items-center justify-center gap-2.5 transition shadow-[0_0_35px_rgba(16,185,129,0.4)] cursor-pointer active:scale-[0.98]"
             >
               <span>Ingresar al Campus Virtual en 1 Clic</span>
               <ArrowRight className="w-4 h-4" />
@@ -348,38 +372,60 @@ Correo: ${email}${autoEnrolledData.tempPassword ? `\nContraseña generada: ${aut
 
   // 2. PANTALLA DE SOLICITUD ENVIADA (TRANSFERENCIA BANCARIA CON COMPROBANTE)
   if (reference) {
-    const whatsappNotification = `Hola Equipo de Soporte, acabo de registrar mi pago para el curso "${course.name}".
-Referencia: #${reference}
+    const whatsappNotification = `¡Hola Equipo de Admisiones! Acabo de completar mi inscripción para "${course.name}".
+Referencia de Matrícula: #${reference}
 Alumno: ${name}
 Correo: ${email}
-${phone ? `Teléfono: ${phone}\n` : ""}${method === "transfer" ? (selectedFile && hasProof === "yes" ? "Adjunto mi comprobante de transferencia bancaria." : "Realicé la transferencia bancaria.") : "El pago fue coordinado previamente."}`;
+${phone ? `WhatsApp: ${phone}\n` : ""}${method === "transfer" ? (selectedFile && hasProof === "yes" ? "Adjunto mi comprobante de transferencia bancaria." : "Realicé la transferencia bancaria.") : "El pago fue coordinado previamente."}`;
 
     return (
       <main className="min-h-screen bg-[#050505] text-[#d6d6dc] py-16 px-4 sm:px-6 flex flex-col items-center justify-center antialiased relative overflow-hidden">
         <BackgroundPaths />
 
-        <div className="max-w-lg w-full varkentis-card-elevated p-8 sm:p-10 space-y-7 relative z-10">
+        <div className="max-w-lg w-full varkentis-card-elevated p-8 sm:p-10 space-y-7 relative z-10 border-emerald-500/30">
           <div className="text-center space-y-3">
-            <div className="w-16 h-16 rounded-full bg-[#F26101]/15 text-[#F26101] border border-[#F26101]/30 flex items-center justify-center mx-auto shadow-[0_0_30px_rgba(242,97,1,0.25)]">
-              <CheckCircle2 className="w-8 h-8" />
+            <div className="w-16 h-16 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mx-auto shadow-[0_0_40px_rgba(16,185,129,0.35)]">
+              <CheckCircle2 className="w-8 h-8 text-emerald-400" />
             </div>
             <div>
-              <span className="font-mono-system text-[10px] font-bold tracking-[0.2em] text-[#F26101] uppercase bg-[#F26101]/10 px-3 py-1 rounded-full border border-[#F26101]/25 inline-block mb-2">
-                Registro Recibido
+              <span className="font-mono-system text-[10px] font-bold tracking-[0.2em] text-emerald-400 uppercase bg-emerald-500/10 px-3.5 py-1 rounded-full border border-emerald-500/30 inline-block mb-2">
+                ¡Solicitud Confirmada con Éxito!
               </span>
               <h1 className="text-2xl sm:text-3xl font-heading text-white tracking-tight">
-                Solicitud de Matrícula Recibida
+                ¡Inscripción Recibida con Éxito!
               </h1>
-              <p className="text-xs text-[#D9E8F5]/70 mt-1 max-w-sm mx-auto font-body">
-                Tu solicitud para <strong className="text-white font-semibold">{course.name}</strong> está en proceso de verificación prioritaria.
+              <p className="text-xs sm:text-sm text-[#D9E8F5]/80 mt-1 max-w-sm mx-auto font-body">
+                Tu solicitud para el programa <strong className="text-white font-semibold">{course.name}</strong> fue registrada y procesada correctamente.
+              </p>
+              {checkoutTitle && checkoutTitle !== course.name ? (
+                <div className="mt-2">
+                  <span className="font-mono text-[10px] text-zinc-400 bg-white/5 border border-white/10 px-2.5 py-0.5 rounded-full inline-block">
+                    Modalidad / Promoción: {checkoutTitle}
+                  </span>
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          {/* Tarjeta de Notificación Principal en Verde Esmeralda */}
+          <div className="rounded-2xl bg-emerald-950/40 border border-emerald-500/35 p-4 sm:p-5 flex items-start gap-3.5 text-left shadow-[0_0_30px_rgba(16,185,129,0.12)]">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 flex items-center justify-center shrink-0 mt-0.5">
+              <Mail className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <h2 className="text-sm font-semibold text-emerald-300 font-heading">
+                Vas a recibir un correo electrónico y un WhatsApp
+              </h2>
+              <p className="text-xs text-emerald-200/80 leading-relaxed font-body">
+                Te enviaremos tus datos de acceso oficiales y el enlace directo al Campus Virtual a <strong className="text-white font-mono break-all">{email}</strong>{phone ? <> y a tu WhatsApp <strong className="text-white font-mono">{phone}</strong></> : null}.
               </p>
             </div>
           </div>
 
           {/* Código de Referencia */}
           <div className="rounded-2xl bg-[#050505]/70 border border-white/10 p-5 space-y-4 shadow-inner">
-            <div className="flex items-center justify-between text-xs text-zinc-400">
-              <span className="font-mono-system text-[11px] uppercase tracking-wider text-[#D9E8F5]/60">Código de Referencia</span>
+            <div className="flex items-center justify-between text-xs text-zinc-400 pb-3 border-b border-white/[0.08]">
+              <span className="font-mono-system text-[11px] uppercase tracking-wider text-[#D9E8F5]/60">Código de Matrícula</span>
               <button
                 type="button"
                 onClick={async () => {
@@ -388,7 +434,7 @@ ${phone ? `Teléfono: ${phone}\n` : ""}${method === "transfer" ? (selectedFile &
                   setTimeout(() => setCopiedRef(false), 2000);
                 }}
                 aria-label="Copiar código de referencia de pago"
-                className="flex items-center gap-1.5 text-xs text-[#F26101] hover:text-[#ff8533] active:scale-95 font-semibold cursor-pointer px-2.5 py-1 rounded-full bg-[#F26101]/10 hover:bg-[#F26101]/20 border border-[#F26101]/25 transition-all"
+                className="flex items-center gap-1.5 text-xs text-emerald-400 hover:text-emerald-300 active:scale-95 font-semibold cursor-pointer px-2.5 py-1 rounded-full bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 transition-all font-mono"
               >
                 {copiedRef ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                 <span>{copiedRef ? "¡Copiado!" : "Copiar"}</span>
@@ -406,23 +452,54 @@ ${phone ? `Teléfono: ${phone}\n` : ""}${method === "transfer" ? (selectedFile &
               </div>
               <div className="text-right">
                 <span className="text-zinc-500 block text-[10px] uppercase tracking-wider">Estado</span>
-                <span className="inline-flex items-center gap-1 text-[#F26101] font-medium mt-0.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#F26101] animate-pulse" />
-                  Verificación en curso
+                <span className="inline-flex items-center gap-1.5 text-emerald-400 font-semibold mt-0.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)] animate-pulse" />
+                  Registrado con éxito
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Próximos pasos */}
-          <div className="space-y-2 text-xs text-[#D9E8F5]/80 p-4 rounded-xl bg-white/[0.02] border border-white/[0.08] leading-relaxed font-body">
-            <h3 className="font-heading text-white text-sm">Instrucciones de Activación:</h3>
-            <p className="text-[12px]">
-              1. El equipo de soporte coteja tu comprobante o transferencia bancaria en tiempo real.
-            </p>
-            <p className="text-[12px]">
-              2. Tu cuenta quedará habilitada en <code className="text-[#F26101] font-mono">campus.michaelsahlmann.com</code> y recibirás el enlace de acceso directo a tu correo (<span className="text-white font-mono">{email}</span>) y WhatsApp.
-            </p>
+          {/* Próximos pasos claros para el Alumno */}
+          <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/[0.08] space-y-3.5 text-xs text-left font-body">
+            <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
+              <span className="font-mono-system text-[10px] font-bold uppercase tracking-wider text-zinc-400">
+                ¿Qué debes hacer ahora?
+              </span>
+              <span className="text-[10px] text-emerald-400 font-mono font-medium flex items-center gap-1">
+                <ShieldCheck className="w-3.5 h-3.5" /> Tu lugar está asegurado
+              </span>
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 font-mono text-[11px] font-bold">
+                  1
+                </div>
+                <div>
+                  <span className="font-semibold text-white block">Atento a tu Correo Electrónico</span>
+                  <p className="text-[11px] text-[#D9E8F5]/80 mt-0.5 leading-relaxed">
+                    Revisa tu bandeja de entrada en <strong className="text-white font-mono break-all">{email}</strong> (y carpeta spam por si acaso). Te enviaremos tu Magic Link oficial para ingresar en 1 clic.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0 font-mono text-[11px] font-bold">
+                  2
+                </div>
+                <div>
+                  <span className="font-semibold text-white block">Atento a tu WhatsApp</span>
+                  <p className="text-[11px] text-[#D9E8F5]/80 mt-0.5 leading-relaxed">
+                    {phone ? (
+                      <>Te escribiremos al <strong className="text-white font-mono">{phone}</strong> para confirmarte que tu aula virtual ya está 100% activa.</>
+                    ) : (
+                      <>Nuestro equipo de admisiones te contactará para confirmar tu habilitación y acompañarte en tus primeros pasos.</>
+                    )}
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* Botones de acción */}
@@ -431,7 +508,7 @@ ${phone ? `Teléfono: ${phone}\n` : ""}${method === "transfer" ? (selectedFile &
               href={`https://wa.me/595981000000?text=${encodeURIComponent(whatsappNotification)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="varkentis-btn-primary w-full py-4 px-6 text-xs sm:text-sm font-bold flex items-center justify-center gap-2"
+              className="w-full py-4 px-6 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-heading text-xs sm:text-sm font-black flex items-center justify-center gap-2.5 transition shadow-[0_0_25px_rgba(16,185,129,0.35)] cursor-pointer active:scale-[0.98]"
             >
               <Phone className="w-4 h-4" />
               <span>Notificar al Soporte por WhatsApp</span>
