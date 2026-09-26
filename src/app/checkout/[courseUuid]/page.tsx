@@ -151,9 +151,10 @@ export default async function CheckoutPage(props: {
     <CheckoutForm
       course={{
         ...data.course,
-        name: data.title || data.course.name,
+        name: data.course.name || data.title,
         price_pyg: data.price,
       }}
+      checkoutTitle={data.title && data.title !== data.course.name ? data.title : undefined}
       checkoutSlug={data.slug}
       bankSettings={bankSettings}
       initialCoupon={initialCoupon}
