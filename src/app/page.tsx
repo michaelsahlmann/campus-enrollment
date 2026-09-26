@@ -110,24 +110,26 @@ interface OrderItem {
 }
 
 const TAB_MAP: Record<string, "form" | "students" | "courses" | "checkouts" | "orders" | "coupons" | "config"> = {
+  "liberaciones": "orders",
+  "liberaciones-pendientes": "orders",
+  "pagos-pendientes": "orders",
+  "orders": "orders",
   "matricular": "form",
   "matricular-alumno": "form",
   "alumnos": "students",
   "cursos": "courses",
   "checkouts": "checkouts",
-  "orders": "orders",
-  "pagos-pendientes": "orders",
   "cupones": "coupons",
   "config": "config",
   "configuracion": "config",
 };
 
 const TAB_REVERSE_MAP: Record<string, string> = {
+  orders: "liberaciones-pendientes",
   form: "matricular-alumno",
   students: "alumnos",
   courses: "cursos",
   checkouts: "checkouts",
-  orders: "pagos-pendientes",
   coupons: "cupones",
   config: "configuracion",
 };
@@ -148,7 +150,7 @@ export default function CampusPortalPage() {
         return TAB_MAP[tabParam];
       }
     }
-    return "form";
+    return "orders";
   });
 
   // Form State
@@ -722,7 +724,7 @@ ${confirmedOrderCredentials.magicLink}
     queueMicrotask(() => {
       const params = new URLSearchParams(window.location.search);
       const tabParam = params.get("tab");
-      const initialTab = tabParam && TAB_MAP[tabParam] ? TAB_MAP[tabParam] : "form";
+      const initialTab = tabParam && TAB_MAP[tabParam] ? TAB_MAP[tabParam] : "orders";
       if (initialTab === "students") void fetchStudents();
       if (initialTab === "courses") void fetchCourses();
       if (initialTab === "checkouts") void fetchCheckouts();
@@ -760,10 +762,10 @@ ${confirmedOrderCredentials.magicLink}
   const pendingOrdersCount = orders.filter((o) => o.status === "pending_review").length;
 
   const navItems = [
+    { id: "orders" as const, label: "Liberaciones pendientes", icon: CheckCircle2, badge: pendingOrdersCount },
     { id: "form" as const, label: "Matricular Alumno", icon: UserPlus },
     { id: "students" as const, label: "Alumnos & Matrículas", icon: Users },
     { id: "courses" as const, label: "Cursos & Mapeo", icon: BookOpen },
-    { id: "orders" as const, label: "Pagos pendientes", icon: CheckCircle2, badge: pendingOrdersCount },
     { id: "coupons" as const, label: "Cupones", icon: Sparkles },
     { id: "checkouts" as const, label: "Links de Checkout", icon: CreditCard },
     { id: "config" as const, label: "Configuración", icon: Settings },
@@ -1823,14 +1825,14 @@ ${confirmedOrderCredentials.magicLink}
           </div>
         )}
 
-        {/* TAB 4: PAGOS PENDIENTES */}
+        {/* TAB 1: LIBERACIONES PENDIENTES */}
         {activeTab === "orders" && (
           <div className="space-y-6">
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-semibold text-white tracking-tight flex items-center gap-2.5">
                   <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                  Pagos Pendientes de Verificación
+                  Liberaciones Pendientes de Verificación
                 </h2>
                 <p className="text-xs text-zinc-400 mt-1">
                   Revisa los pagos registrados por los alumnos y confirma para liberar automáticamente su usuario y matrícula en LearnHouse.
@@ -2022,7 +2024,7 @@ ${confirmedOrderCredentials.magicLink}
               {!isLoadingOrders && orders.filter((order) => order.status === "pending_review").length === 0 && (
                 <div className="p-12 text-center apple-card rounded-3xl space-y-2">
                   <CheckCircle2 className="w-8 h-8 text-zinc-600 mx-auto mb-2" />
-                  <p className="text-zinc-200 font-medium text-sm">No hay pagos pendientes de revisión</p>
+                  <p className="text-zinc-200 font-medium text-sm">No hay liberaciones pendientes de revisión</p>
                   <p className="text-xs text-zinc-500">
                     Cuando un alumno complete el checkout, aparecerá aquí para su liberación.
                   </p>
