@@ -102,6 +102,6 @@ BEGIN
     PERFORM cron.schedule(
         'revoke-expired-trials-job',
         '0 */6 * * *',
-        $$ SELECT public.audit_and_revoke_expired_trials(); $$
+        $cron$ SELECT public.audit_and_revoke_expired_trials(); $cron$
     );
 END $$;
