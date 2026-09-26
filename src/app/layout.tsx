@@ -1,5 +1,18 @@
 import type { Metadata } from "next";
+import { Plus_Jakarta_Sans, Outfit } from "next/font/google";
 import "./globals.css";
+
+const plusJakartaSans = Plus_Jakarta_Sans({
+  subsets: ["latin"],
+  variable: "--font-sans",
+  display: "swap",
+});
+
+const outfit = Outfit({
+  subsets: ["latin"],
+  variable: "--font-heading",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: {
@@ -31,8 +44,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className="h-full antialiased">
-      <body className="min-h-full flex flex-col bg-[#050505] text-[#d6d6dc] selection:bg-[#F26101]/30 selection:text-white font-body">
+    <html lang="es" className={`h-full antialiased ${plusJakartaSans.variable} ${outfit.variable}`}>
+      <body className="min-h-full flex flex-col bg-[#050505] text-[#d6d6dc] selection:bg-[#F26101]/30 selection:text-white font-sans">
         {children}
       </body>
     </html>

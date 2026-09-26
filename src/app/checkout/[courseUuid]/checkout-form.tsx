@@ -515,7 +515,7 @@ ${phone ? `Teléfono: ${phone}\n` : ""}${method === "transfer" ? (selectedFile &
                 <div className="space-y-4">
                   {/* Nombre y Apellido */}
                   <div>
-                    <label htmlFor="student-name-input" className="block text-[11px] font-mono-system uppercase tracking-wider text-[#D9E8F5]/60 mb-1.5">
+                    <label htmlFor="student-name-input" className="block text-[11px] font-medium uppercase tracking-wider text-[#D9E8F5]/70 mb-1.5">
                       Nombre y Apellido <span className="text-[#F26101]">*</span>
                     </label>
                     <div className="relative">
@@ -537,10 +537,10 @@ ${phone ? `Teléfono: ${phone}\n` : ""}${method === "transfer" ? (selectedFile &
                   {/* Correo Electrónico */}
                   <div>
                     <div className="flex items-center justify-between mb-1.5">
-                      <label htmlFor="student-email-input" className="text-[11px] font-mono-system uppercase tracking-wider text-[#D9E8F5]/60">
+                      <label htmlFor="student-email-input" className="text-[11px] font-medium uppercase tracking-wider text-[#D9E8F5]/70">
                         Correo Electrónico <span className="text-[#F26101]">*</span>
                       </label>
-                      <span className="text-[10px] text-zinc-500 font-mono">Usuario del Campus</span>
+                      <span className="text-[10px] text-zinc-500">Usuario del Campus</span>
                     </div>
                     <div className="relative">
                       <Mail className="w-4 h-4 text-zinc-500 absolute left-4 top-3.5 pointer-events-none" />
@@ -553,14 +553,14 @@ ${phone ? `Teléfono: ${phone}\n` : ""}${method === "transfer" ? (selectedFile &
                         placeholder="tu-correo@ejemplo.com"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
-                        className="w-full varkentis-input pl-11 pr-4 py-3 text-white placeholder-zinc-600 text-sm font-mono"
+                        className="w-full varkentis-input pl-11 pr-4 py-3 text-white placeholder-zinc-600 text-sm"
                       />
                     </div>
                   </div>
 
                   {/* Confirmar Correo */}
                   <div>
-                    <label htmlFor="student-confirm-email-input" className="block text-[11px] font-mono-system uppercase tracking-wider text-[#D9E8F5]/60 mb-1.5">
+                    <label htmlFor="student-confirm-email-input" className="block text-[11px] font-medium uppercase tracking-wider text-[#D9E8F5]/70 mb-1.5">
                       Confirmar Correo Electrónico <span className="text-[#F26101]">*</span>
                     </label>
                     <div className="relative">
@@ -580,7 +580,7 @@ ${phone ? `Teléfono: ${phone}\n` : ""}${method === "transfer" ? (selectedFile &
                         placeholder="Repite tu correo para verificar"
                         value={confirmEmail}
                         onChange={(e) => setConfirmEmail(e.target.value)}
-                        className={`w-full varkentis-input pl-11 pr-4 py-3 text-white placeholder-zinc-600 text-sm font-mono ${
+                        className={`w-full varkentis-input pl-11 pr-4 py-3 text-white placeholder-zinc-600 text-sm ${
                           confirmEmail && confirmEmail.toLowerCase() !== email.toLowerCase()
                             ? "!border-rose-500 focus:!ring-rose-500/20"
                             : ""
@@ -588,7 +588,7 @@ ${phone ? `Teléfono: ${phone}\n` : ""}${method === "transfer" ? (selectedFile &
                       />
                     </div>
                     {confirmEmail && confirmEmail.toLowerCase() !== email.toLowerCase() ? (
-                      <p className="text-[11px] text-rose-400 mt-1.5 flex items-center gap-1 font-mono" role="alert">
+                      <p className="text-[11px] text-rose-400 mt-1.5 flex items-center gap-1 font-sans" role="alert">
                         <AlertCircle className="w-3.5 h-3.5" /> Los correos no coinciden.
                       </p>
                     ) : null}
@@ -596,11 +596,11 @@ ${phone ? `Teléfono: ${phone}\n` : ""}${method === "transfer" ? (selectedFile &
 
                   {/* Teléfono / WhatsApp */}
                   <div>
-                    <label htmlFor="student-phone-input" className="block text-[11px] font-mono-system uppercase tracking-wider text-[#D9E8F5]/60 mb-1.5">
+                    <label htmlFor="student-phone-input" className="block text-[11px] font-medium uppercase tracking-wider text-[#D9E8F5]/70 mb-1.5">
                       Número de WhatsApp / Teléfono <span className="text-zinc-500 lowercase">(opcional)</span>
                     </label>
                     <div className="relative flex items-center">
-                      <div className="absolute left-4 flex items-center gap-1 text-xs text-zinc-400 pointer-events-none font-mono">
+                      <div className="absolute left-4 flex items-center gap-1 text-xs text-zinc-400 pointer-events-none">
                         <span>🇵🇾</span>
                         <span>+595</span>
                       </div>
@@ -612,10 +612,10 @@ ${phone ? `Teléfono: ${phone}\n` : ""}${method === "transfer" ? (selectedFile &
                         placeholder="981 123 456"
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
-                        className="w-full varkentis-input pl-20 pr-4 py-3 text-white placeholder-zinc-600 text-sm font-mono"
+                        className="w-full varkentis-input pl-20 pr-4 py-3 text-white placeholder-zinc-600 text-sm"
                       />
                     </div>
-                    <span className="text-[10px] text-zinc-500 mt-1.5 block font-body">
+                    <span className="text-[10px] text-zinc-500 mt-1.5 block">
                       Para emitirte acceso prioritario y soporte humano directo.
                     </span>
                   </div>

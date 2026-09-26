@@ -49,21 +49,19 @@ body {
   overflow-x: clip;
   background-color: var(--bg-deep-void);
   color: var(--ink-reading);
-  font-family: "Labrada", Georgia, serif;
+  font-family: var(--font-sans), system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Tipografía de Marca Varkentis */
+/* Tipografía Moderna: Outfit (Display/Headings) & Plus Jakarta Sans (Cuerpo & UI) */
 .font-heading {
-  font-family: "Young Serif", Georgia, serif;
-  letter-spacing: -0.01em;
-  line-height: 1.1;
-  font-weight: 400;
+  font-family: var(--font-heading), var(--font-sans), sans-serif;
+  letter-spacing: -0.02em;
 }
 
 .font-body {
-  font-family: "Labrada", Georgia, serif;
+  font-family: var(--font-sans), system-ui, -apple-system, sans-serif;
 }
 
 .font-mono-system {
