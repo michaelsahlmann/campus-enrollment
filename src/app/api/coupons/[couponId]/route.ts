@@ -10,6 +10,7 @@ export async function PUT(request: NextRequest, props: { params: Promise<{ coupo
     name?: string;
     discountType?: string;
     discountValue?: number;
+    applicableCheckoutIds?: string[] | null;
     isActive?: boolean;
   };
   const updateData: Record<string, unknown> = {};
@@ -39,6 +40,11 @@ export async function PUT(request: NextRequest, props: { params: Promise<{ coupo
   if (body.isActive !== undefined) {
     if (typeof body.isActive !== "boolean") return NextResponse.json({ error: "Estado inválido." }, { status: 400 });
     updateData.is_active = body.isActive;
+  }
+  if (body.applicableCheckoutIds !== undefined) {
+    updateData.applicable_checkout_ids = Array.isArray(body.applicableCheckoutIds) && body.applicableCheckoutIds.length > 0
+      ? body.applicableCheckoutIds
+      : null;
   }
   if (Object.keys(updateData).length === 0) return NextResponse.json({ error: "No hay cambios para guardar." }, { status: 400 });
   if (body.discountType === "percentage" && body.discountValue === undefined) {

@@ -53,6 +53,7 @@ interface CouponItem {
   name: string;
   discount_type: "percentage" | "fixed";
   discount_value: number;
+  applicable_checkout_ids?: string[] | null;
   is_active: boolean;
   created_at?: string;
 }
@@ -62,6 +63,8 @@ interface CheckoutItem {
   slug: string;
   title: string;
   price_pyg: number;
+  trial_days?: number | null;
+  expires_at?: string | null;
   is_active: boolean;
   created_at?: string;
   courses?: {
@@ -204,12 +207,20 @@ export default function CampusPortalPage() {
   const [editingCoupon, setEditingCoupon] = useState<CouponItem | null>(null);
   const [isUpdatingCoupon, setIsUpdatingCoupon] = useState(false);
 
+  const [couponScope, setCouponScope] = useState<"global" | "specific">("global");
+  const [couponSelectedCheckouts, setCouponSelectedCheckouts] = useState<string[]>([]);
+  const [shareCouponModal, setShareCouponModal] = useState<CouponItem | null>(null);
+  const [copiedDiscountLinkId, setCopiedDiscountLinkId] = useState<string | null>(null);
+
   // Checkouts State
   const [checkouts, setCheckouts] = useState<CheckoutItem[]>([]);
   const [isLoadingCheckouts, setIsLoadingCheckouts] = useState(false);
   const [checkoutTitle, setCheckoutTitle] = useState("");
   const [checkoutCourseId, setCheckoutCourseId] = useState("");
   const [checkoutPrice, setCheckoutPrice] = useState<number>(1500000);
+  const [checkoutValidityType, setCheckoutValidityType] = useState<"unlimited" | "trial" | "fixed_date">("unlimited");
+  const [checkoutTrialDays, setCheckoutTrialDays] = useState<number | "">("");
+  const [checkoutExpiresAt, setCheckoutExpiresAt] = useState<string>("");
   const [checkoutMessage, setCheckoutMessage] = useState<string | null>(null);
   const [previewCheckoutSlug, setPreviewCheckoutSlug] = useState<string | null>(null);
 
@@ -387,6 +398,11 @@ export default function CampusPortalPage() {
     event.preventDefault();
     setCouponMessage(null);
     try {
+      const applicableCheckoutIds =
+        couponScope === "specific" && couponSelectedCheckouts.length > 0
+          ? couponSelectedCheckouts
+          : null;
+
       const response = await fetch("/api/coupons", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -396,6 +412,7 @@ export default function CampusPortalPage() {
           discountType: couponType,
           discountValue: couponValue,
           length: couponLength,
+          applicableCheckoutIds,
         }),
       });
       const data = await response.json();
@@ -403,6 +420,8 @@ export default function CampusPortalPage() {
       setCouponMessage(`¡Cupón creado con éxito! Código: ${data.coupon.code}`);
       setCouponName("");
       setCouponCustomCode("");
+      setCouponScope("global");
+      setCouponSelectedCheckouts([]);
       await fetchCoupons();
     } catch (cause: unknown) {
       setCouponMessage(cause instanceof Error ? cause.message : "No se pudo crear el cupón.");
@@ -441,6 +460,7 @@ export default function CampusPortalPage() {
           name: editingCoupon.name,
           discountType: editingCoupon.discount_type,
           discountValue: editingCoupon.discount_value,
+          applicableCheckoutIds: editingCoupon.applicable_checkout_ids || null,
           isActive: editingCoupon.is_active,
         }),
       });
@@ -512,6 +532,13 @@ export default function CampusPortalPage() {
     setCheckoutMessage(null);
     try {
       const targetCourse = courses.find((c) => c.id === checkoutCourseId || c.course_uuid === checkoutCourseId) || courses[0];
+      const trialDays =
+        checkoutValidityType === "trial" && checkoutTrialDays ? Number(checkoutTrialDays) : null;
+      const expiresAt =
+        checkoutValidityType === "fixed_date" && checkoutExpiresAt
+          ? new Date(checkoutExpiresAt).toISOString()
+          : null;
+
       const res = await fetch("/api/checkouts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -519,12 +546,17 @@ export default function CampusPortalPage() {
           title: checkoutTitle,
           courseId: targetCourse?.course_uuid || targetCourse?.id || "",
           pricePyg: checkoutPrice,
+          trialDays,
+          expiresAt,
         }),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "No se pudo crear el checkout.");
       setCheckoutMessage(`Checkout creado con éxito: /checkout/${data.checkout.slug}`);
       setCheckoutTitle("");
+      setCheckoutValidityType("unlimited");
+      setCheckoutTrialDays("");
+      setCheckoutExpiresAt("");
       await fetchCheckouts();
     } catch (err: unknown) {
       setCheckoutMessage(err instanceof Error ? err.message : "Error al crear checkout.");
@@ -640,6 +672,13 @@ ${confirmedOrderCredentials.magicLink}
 
   const copyCheckoutLink = (courseUuid: string) => {
     copyToClipboard(`${window.location.origin}/checkout/${courseUuid}`, "link");
+  };
+
+  const copyDiscountCheckoutLink = (slugOrUuid: string, couponCode: string) => {
+    copyToClipboard(
+      `${window.location.origin}/checkout/${slugOrUuid}?coupon=${encodeURIComponent(couponCode)}`,
+      "link"
+    );
   };
 
   const handleGenerateStudentMagicLink = async (st: StudentItem, courseUuid: string) => {
@@ -1717,6 +1756,114 @@ ${confirmedOrderCredentials.magicLink}
                   </div>
                 </div>
 
+                {/* Vigencia / Expiración del Acceso */}
+                <div className="pt-2 border-t border-white/[0.06] space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-amber-400" />
+                      Vigencia del Acceso (Alumnos inscritos vía este link)
+                    </label>
+                    <span className="text-[10px] text-zinc-500 font-mono">
+                      {checkoutValidityType === "unlimited" && "Acceso permanente"}
+                      {checkoutValidityType === "trial" && "Días contados desde inscripción"}
+                      {checkoutValidityType === "fixed_date" && "Fecha límite fija"}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setCheckoutValidityType("unlimited")}
+                      className={`px-3 py-2 rounded-xl text-xs font-semibold text-left border transition cursor-pointer ${
+                        checkoutValidityType === "unlimited"
+                          ? "bg-white/[0.1] text-white border-white/20 shadow-sm"
+                          : "bg-white/[0.02] text-zinc-400 border-white/[0.06] hover:border-white/[0.12]"
+                      }`}
+                    >
+                      <span className="block font-medium">Permanente</span>
+                      <span className="text-[10px] text-zinc-500">Sin fecha de caducidad</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setCheckoutValidityType("trial")}
+                      className={`px-3 py-2 rounded-xl text-xs font-semibold text-left border transition cursor-pointer ${
+                        checkoutValidityType === "trial"
+                          ? "bg-amber-500/15 text-amber-300 border-amber-500/40 shadow-sm"
+                          : "bg-white/[0.02] text-zinc-400 border-white/[0.06] hover:border-white/[0.12]"
+                      }`}
+                    >
+                      <span className="block font-medium">Días de Trial / Prueba</span>
+                      <span className="text-[10px] text-zinc-500">Ej. 7, 15, 30 días</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setCheckoutValidityType("fixed_date")}
+                      className={`px-3 py-2 rounded-xl text-xs font-semibold text-left border transition cursor-pointer ${
+                        checkoutValidityType === "fixed_date"
+                          ? "bg-amber-500/15 text-amber-300 border-amber-500/40 shadow-sm"
+                          : "bg-white/[0.02] text-zinc-400 border-white/[0.06] hover:border-white/[0.12]"
+                      }`}
+                    >
+                      <span className="block font-medium">Fecha Límite Fija</span>
+                      <span className="text-[10px] text-zinc-500">Vence en fecha fija</span>
+                    </button>
+                  </div>
+
+                  {checkoutValidityType === "trial" && (
+                    <div className="p-3.5 rounded-2xl bg-amber-500/5 border border-amber-500/20 space-y-2 animate-fade-in">
+                      <label className="block text-[11px] font-semibold uppercase tracking-wider text-amber-300">
+                        Cantidad de Días de Acceso
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="number"
+                          min={1}
+                          required
+                          placeholder="30"
+                          value={checkoutTrialDays}
+                          onChange={(e) => setCheckoutTrialDays(e.target.value ? Number(e.target.value) : "")}
+                          className="apple-input w-36 rounded-xl px-3.5 py-2 text-white font-mono text-xs sm:text-sm"
+                        />
+                        <div className="flex gap-1.5">
+                          {[7, 15, 30, 60].map((days) => (
+                            <button
+                              key={days}
+                              type="button"
+                              onClick={() => setCheckoutTrialDays(days)}
+                              className="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-[11px] font-mono text-zinc-300 border border-white/10 cursor-pointer"
+                            >
+                              {days}d
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-zinc-400 font-body">
+                        Al cumplirse los días desde la matriculación de cada alumno con este link, el cron de Supabase revoca el acceso de forma 100% autónoma en LearnHouse.
+                      </p>
+                    </div>
+                  )}
+
+                  {checkoutValidityType === "fixed_date" && (
+                    <div className="p-3.5 rounded-2xl bg-amber-500/5 border border-amber-500/20 space-y-2 animate-fade-in">
+                      <label className="block text-[11px] font-semibold uppercase tracking-wider text-amber-300">
+                        Fecha Límite de Acceso
+                      </label>
+                      <input
+                        type="date"
+                        required
+                        value={checkoutExpiresAt}
+                        onChange={(e) => setCheckoutExpiresAt(e.target.value)}
+                        className="apple-input w-48 rounded-xl px-3.5 py-2 text-white font-mono text-xs sm:text-sm cursor-pointer"
+                      />
+                      <p className="text-[11px] text-zinc-400 font-body">
+                        Llegada esta fecha a las 23:59:59 el cron autónomo dará de baja a los alumnos inscritos bajo este link.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex justify-end pt-2">
                   <button
                     type="submit"
@@ -1758,6 +1905,24 @@ ${confirmedOrderCredentials.magicLink}
                           <p className="text-xs text-zinc-400 mt-1">
                             {item.courses?.name || "Curso asociado"}
                           </p>
+
+                          <div className="flex items-center gap-2 mt-2">
+                            {item.trial_days ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-medium bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                                <Clock className="w-3 h-3 text-amber-400" />
+                                Trial: {item.trial_days} días
+                              </span>
+                            ) : item.expires_at ? (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-medium bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                                <Clock className="w-3 h-3 text-amber-400" />
+                                Vence: {new Date(item.expires_at).toLocaleDateString("es-PY")}
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-mono font-medium bg-white/5 text-zinc-400 border border-white/10">
+                                Permanente
+                              </span>
+                            )}
+                          </div>
                         </div>
                         <span className="text-xs font-bold text-emerald-400 font-mono tabular-nums">
                           {item.price_pyg.toLocaleString()} PYG
@@ -2189,6 +2354,122 @@ ${confirmedOrderCredentials.magicLink}
                   </div>
                 )}
 
+                {/* Alcance del Cupón: Global vs Específico */}
+                <div className="pt-2 border-t border-white/[0.06] space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
+                      <Link2 className="w-3.5 h-3.5 text-sky-400" />
+                      Alcance del Cupón
+                    </label>
+                    <span className="text-[10px] text-zinc-500 font-mono">
+                      {couponScope === "global"
+                        ? "Válido para todos los checkouts y cursos"
+                        : `${couponSelectedCheckouts.length} checkout(s) vinculados`}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCouponScope("global");
+                        setCouponSelectedCheckouts([]);
+                      }}
+                      className={`px-3.5 py-2.5 rounded-xl text-xs font-semibold text-left border transition cursor-pointer ${
+                        couponScope === "global"
+                          ? "bg-white/[0.1] text-white border-white/20 shadow-sm"
+                          : "bg-white/[0.02] text-zinc-400 border-white/[0.06] hover:border-white/[0.12]"
+                      }`}
+                    >
+                      <span className="block font-medium">Global (General)</span>
+                      <span className="text-[10px] text-zinc-500">Se puede usar en cualquier checkout</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setCouponScope("specific")}
+                      className={`px-3.5 py-2.5 rounded-xl text-xs font-semibold text-left border transition cursor-pointer ${
+                        couponScope === "specific"
+                          ? "bg-sky-500/15 text-sky-300 border-sky-500/40 shadow-sm"
+                          : "bg-white/[0.02] text-zinc-400 border-white/[0.06] hover:border-white/[0.12]"
+                      }`}
+                    >
+                      <span className="block font-medium">Checkouts Específicos</span>
+                      <span className="text-[10px] text-zinc-500">Restringir a 1 o más links de checkout</span>
+                    </button>
+                  </div>
+
+                  {couponScope === "specific" && (
+                    <div className="p-3.5 rounded-2xl bg-sky-500/5 border border-sky-500/20 space-y-2.5 animate-fade-in">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-sky-300">
+                          Selecciona los Checkouts Válidos
+                        </span>
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setCouponSelectedCheckouts(checkouts.map((c) => c.id))}
+                            className="text-[10px] text-sky-400 hover:underline cursor-pointer"
+                          >
+                            Marcar todos
+                          </button>
+                          <span className="text-zinc-600">·</span>
+                          <button
+                            type="button"
+                            onClick={() => setCouponSelectedCheckouts([])}
+                            className="text-[10px] text-zinc-400 hover:underline cursor-pointer"
+                          >
+                            Desmarcar
+                          </button>
+                        </div>
+                      </div>
+
+                      {checkouts.length === 0 ? (
+                        <p className="text-xs text-zinc-400">
+                          No tienes checkouts creados todavía. Ve a la pestaña &quot;Checkouts&quot; para crear uno.
+                        </p>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
+                          {checkouts.map((chk) => {
+                            const isSelected = couponSelectedCheckouts.includes(chk.id);
+                            return (
+                              <label
+                                key={chk.id}
+                                className={`flex items-start gap-2.5 p-2.5 rounded-xl border text-xs cursor-pointer transition ${
+                                  isSelected
+                                    ? "bg-sky-500/10 border-sky-500/40 text-white"
+                                    : "bg-white/[0.02] border-white/[0.06] text-zinc-400 hover:border-white/[0.12]"
+                                }`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setCouponSelectedCheckouts((prev) => [...prev, chk.id]);
+                                    } else {
+                                      setCouponSelectedCheckouts((prev) =>
+                                        prev.filter((id) => id !== chk.id)
+                                      );
+                                    }
+                                  }}
+                                  className="mt-0.5 rounded text-sky-500 bg-black/60 border-white/[0.1] cursor-pointer"
+                                />
+                                <div className="min-w-0">
+                                  <p className="font-semibold text-white truncate">{chk.title}</p>
+                                  <p className="text-[10px] text-zinc-400 font-mono truncate">
+                                    /checkout/{chk.slug} · {chk.price_pyg.toLocaleString()} PYG
+                                  </p>
+                                </div>
+                              </label>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex justify-end pt-2">
                   <button
                     type="submit"
@@ -2238,7 +2519,7 @@ ${confirmedOrderCredentials.magicLink}
                             type="button"
                             onClick={() => copyToClipboard(c.code, "link")}
                             className="p-1 rounded text-zinc-400 hover:text-white transition cursor-pointer"
-                            title="Copiar código"
+                            title="Copiar código del cupón"
                           >
                             <Copy className="w-3.5 h-3.5" />
                           </button>
@@ -2246,10 +2527,60 @@ ${confirmedOrderCredentials.magicLink}
 
                         <p className="text-xs text-zinc-300 font-medium">{c.name}</p>
 
-                        <div className="inline-block px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono tabular-nums">
-                          {c.discount_type === "percentage"
-                            ? `${c.discount_value}% OFF`
-                            : `-${Number(c.discount_value).toLocaleString()} PYG`}
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="inline-block px-2.5 py-1 rounded-lg text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-mono tabular-nums">
+                            {c.discount_type === "percentage"
+                              ? `${c.discount_value}% OFF`
+                              : `-${Number(c.discount_value).toLocaleString()} PYG`}
+                          </div>
+
+                          {c.applicable_checkout_ids && c.applicable_checkout_ids.length > 0 ? (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-mono font-medium bg-sky-500/10 text-sky-300 border border-sky-500/20">
+                              <Link2 className="w-3 h-3 text-sky-400" />
+                              Específico ({c.applicable_checkout_ids.length} link{c.applicable_checkout_ids.length > 1 ? "s" : ""})
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-mono font-medium bg-white/5 text-zinc-400 border border-white/10">
+                              Global (Todos)
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Botón Acción Rápida: Copiar Link con Descuento */}
+                        <div className="pt-1">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (c.applicable_checkout_ids && c.applicable_checkout_ids.length === 1) {
+                                const targetChk = checkouts.find((item) => item.id === c.applicable_checkout_ids![0]);
+                                if (targetChk) {
+                                  copyDiscountCheckoutLink(targetChk.slug, c.code);
+                                  setCopiedDiscountLinkId(c.id);
+                                  setTimeout(() => setCopiedDiscountLinkId(null), 2500);
+                                  return;
+                                }
+                              }
+                              setShareCouponModal(c);
+                            }}
+                            className={`w-full py-2 px-3 rounded-xl border text-xs font-semibold flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-98 ${
+                              copiedDiscountLinkId === c.id
+                                ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
+                                : "bg-white/[0.04] hover:bg-white/[0.08] text-zinc-200 border-white/[0.08]"
+                            }`}
+                            title="Copiar link directo con este cupón precargado"
+                          >
+                            {copiedDiscountLinkId === c.id ? (
+                              <>
+                                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                                <span>¡Link con Cupón Copiado!</span>
+                              </>
+                            ) : (
+                              <>
+                                <Link2 className="w-3.5 h-3.5 text-sky-400" />
+                                <span>Copiar Link con Descuento</span>
+                              </>
+                            )}
+                          </button>
                         </div>
                       </div>
 
@@ -2640,6 +2971,98 @@ ${confirmedOrderCredentials.magicLink}
                   </div>
                 </div>
 
+                {/* Alcance del Cupón en Edición */}
+                <div className="pt-2 border-t border-white/[0.06] space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                      Alcance del Cupón
+                    </label>
+                    <span className="text-[10px] text-zinc-500 font-mono">
+                      {editingCoupon.applicable_checkout_ids && editingCoupon.applicable_checkout_ids.length > 0
+                        ? `${editingCoupon.applicable_checkout_ids.length} checkout(s)`
+                        : "Global (Todos)"}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditingCoupon({
+                          ...editingCoupon,
+                          applicable_checkout_ids: null,
+                        })
+                      }
+                      className={`px-3 py-2 rounded-xl text-xs font-semibold text-left border transition cursor-pointer ${
+                        !editingCoupon.applicable_checkout_ids || editingCoupon.applicable_checkout_ids.length === 0
+                          ? "bg-white/[0.1] text-white border-white/20"
+                          : "bg-white/[0.02] text-zinc-400 border-white/[0.06]"
+                      }`}
+                    >
+                      <span className="block font-medium">Global</span>
+                      <span className="text-[10px] text-zinc-500">Todos los checkouts</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setEditingCoupon({
+                          ...editingCoupon,
+                          applicable_checkout_ids:
+                            editingCoupon.applicable_checkout_ids && editingCoupon.applicable_checkout_ids.length > 0
+                              ? editingCoupon.applicable_checkout_ids
+                              : checkouts.length > 0
+                              ? [checkouts[0].id]
+                              : [],
+                        })
+                      }
+                      className={`px-3 py-2 rounded-xl text-xs font-semibold text-left border transition cursor-pointer ${
+                        editingCoupon.applicable_checkout_ids && editingCoupon.applicable_checkout_ids.length > 0
+                          ? "bg-sky-500/15 text-sky-300 border-sky-500/40"
+                          : "bg-white/[0.02] text-zinc-400 border-white/[0.06]"
+                      }`}
+                    >
+                      <span className="block font-medium">Específico</span>
+                      <span className="text-[10px] text-zinc-500">Restringido a checkouts</span>
+                    </button>
+                  </div>
+
+                  {editingCoupon.applicable_checkout_ids && editingCoupon.applicable_checkout_ids.length > 0 && (
+                    <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1 pt-1">
+                      {checkouts.map((chk) => {
+                        const isChecked = editingCoupon.applicable_checkout_ids?.includes(chk.id);
+                        return (
+                          <label
+                            key={chk.id}
+                            className={`flex items-center gap-2 p-2 rounded-lg border text-xs cursor-pointer transition ${
+                              isChecked
+                                ? "bg-sky-500/10 border-sky-500/40 text-white"
+                                : "bg-white/[0.02] border-white/[0.06] text-zinc-400"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e) => {
+                                const current = editingCoupon.applicable_checkout_ids || [];
+                                const next = e.target.checked
+                                  ? [...current, chk.id]
+                                  : current.filter((id) => id !== chk.id);
+                                setEditingCoupon({
+                                  ...editingCoupon,
+                                  applicable_checkout_ids: next.length > 0 ? next : null,
+                                });
+                              }}
+                              className="rounded text-sky-500 bg-black/60 border-white/[0.1] cursor-pointer"
+                            />
+                            <span className="truncate">{chk.title}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
                 <div className="flex items-center gap-2 pt-1">
                   <input
                     type="checkbox"
@@ -2672,6 +3095,161 @@ ${confirmedOrderCredentials.magicLink}
                   </button>
                 </div>
               </form>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL PARA COPIAR LINK DIRECTO CON CUPÓN PRECARGADO */}
+        {shareCouponModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-2xl animate-fade-in">
+            <div className="apple-card-elevated rounded-3xl w-full max-w-xl overflow-hidden p-6 sm:p-8 space-y-5">
+              <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 rounded-xl bg-sky-500/15 text-sky-400 border border-sky-500/30">
+                    <Link2 className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-white text-base tracking-tight">
+                      Copiar Link con Descuento Auto-Aplicado
+                    </h3>
+                    <p className="text-xs text-zinc-400">
+                      Envía este link directo a tus alumnos para que no tengan que escribir el código manualmente.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShareCouponModal(null)}
+                  className="p-1.5 rounded-xl text-zinc-400 hover:text-white hover:bg-white/[0.06] transition cursor-pointer"
+                  aria-label="Cerrar modal"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Resumen del Cupón */}
+              <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08] flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-base font-bold text-white tracking-wider">
+                      {shareCouponModal.code}
+                    </span>
+                    <span className="text-xs text-zinc-400">({shareCouponModal.name})</span>
+                  </div>
+                  <span className="text-[11px] text-zinc-400 block mt-0.5">
+                    {shareCouponModal.discount_type === "percentage"
+                      ? `Descuento del ${shareCouponModal.discount_value}%`
+                      : `Descuento de ${Number(shareCouponModal.discount_value).toLocaleString()} PYG`}
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="px-3 py-1 rounded-full text-xs font-mono font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                    {shareCouponModal.discount_type === "percentage"
+                      ? `${shareCouponModal.discount_value}% OFF`
+                      : `-${Number(shareCouponModal.discount_value).toLocaleString()} PYG`}
+                  </span>
+                </div>
+              </div>
+
+              {/* Lista de Checkouts Disponibles para este Cupón */}
+              <div className="space-y-3">
+                <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 block">
+                  Elige el Checkout a Compartir:
+                </span>
+
+                <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
+                  {(() => {
+                    const applicableList =
+                      shareCouponModal.applicable_checkout_ids && shareCouponModal.applicable_checkout_ids.length > 0
+                        ? checkouts.filter((chk) => shareCouponModal.applicable_checkout_ids!.includes(chk.id))
+                        : checkouts;
+
+                    if (applicableList.length === 0) {
+                      return (
+                        <div className="p-4 text-center text-xs text-zinc-400 bg-white/[0.02] rounded-xl border border-white/[0.06]">
+                          No hay checkouts asociados disponibles. Crea uno en la pestaña Checkouts.
+                        </div>
+                      );
+                    }
+
+                    return applicableList.map((chk) => {
+                      const discountAmount =
+                        shareCouponModal.discount_type === "percentage"
+                          ? (chk.price_pyg * Number(shareCouponModal.discount_value)) / 100
+                          : Number(shareCouponModal.discount_value);
+                      const finalCalculated = Math.max(0, chk.price_pyg - discountAmount);
+                      const isFree = finalCalculated === 0;
+                      const isCopied = copiedDiscountLinkId === `${shareCouponModal.id}-${chk.id}`;
+
+                      return (
+                        <div
+                          key={chk.id}
+                          className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/[0.08] hover:border-white/[0.14] transition flex items-center justify-between gap-3"
+                        >
+                          <div className="min-w-0">
+                            <h4 className="font-semibold text-white text-xs truncate">{chk.title}</h4>
+                            <p className="text-[11px] text-zinc-400 truncate">
+                              {chk.courses?.name || "Curso oficial"}
+                            </p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-[11px] text-zinc-400 line-through font-mono">
+                                {chk.price_pyg.toLocaleString()} PYG
+                              </span>
+                              <span className="text-xs font-bold text-emerald-400 font-mono">
+                                {isFree ? "GRATIS (0 PYG)" : `${finalCalculated.toLocaleString()} PYG`}
+                              </span>
+                              {chk.trial_days ? (
+                                <span className="text-[10px] text-amber-300 font-mono bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                                  Trial {chk.trial_days}d
+                                </span>
+                              ) : null}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <a
+                              href={`/checkout/${chk.slug}?coupon=${encodeURIComponent(shareCouponModal.code)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="p-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-zinc-300 transition cursor-pointer"
+                              title="Abrir checkout en nueva pestaña para probar"
+                            >
+                              <ExternalLink className="w-3.5 h-3.5" />
+                            </a>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                copyDiscountCheckoutLink(chk.slug, shareCouponModal.code);
+                                setCopiedDiscountLinkId(`${shareCouponModal.id}-${chk.id}`);
+                                setTimeout(() => setCopiedDiscountLinkId(null), 2500);
+                              }}
+                              className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition cursor-pointer active:scale-95 ${
+                                isCopied
+                                  ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                                  : "bg-white text-black hover:bg-zinc-200"
+                              }`}
+                            >
+                              {isCopied ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                              <span>{isCopied ? "¡Copiado!" : "Copiar Link"}</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-2 border-t border-white/[0.06]">
+                <button
+                  type="button"
+                  onClick={() => setShareCouponModal(null)}
+                  className="px-4 py-2 bg-white/[0.06] hover:bg-white/[0.1] text-zinc-300 rounded-xl text-xs font-semibold transition cursor-pointer"
+                >
+                  Cerrar
+                </button>
+              </div>
             </div>
           </div>
         )}

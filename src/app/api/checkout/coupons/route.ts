@@ -8,11 +8,20 @@ export async function GET(request: NextRequest) {
   const supabase = getAdminSupabase();
   if (!supabase || !code || !courseUuid) return NextResponse.json({ error: "Cupón o curso inválido." }, { status: 400 });
   const [{ data: coupon }, { data: course }, { data: checkout }] = await Promise.all([
-    supabase.from("coupons").select("id, code, name, discount_type, discount_value").eq("code", code).eq("is_active", true).maybeSingle(),
+    supabase.from("coupons").select("id, code, name, discount_type, discount_value, applicable_checkout_ids").eq("code", code).eq("is_active", true).maybeSingle(),
     supabase.from("courses").select("price_pyg").eq("course_uuid", courseUuid).eq("is_active", true).maybeSingle(),
-    supabase.from("checkout_links").select("price_pyg").eq("slug", checkoutSlug || "").eq("is_active", true).maybeSingle(),
+    supabase.from("checkout_links").select("id, price_pyg").eq("slug", checkoutSlug || "").eq("is_active", true).maybeSingle(),
   ]);
   if (!coupon || !course) return NextResponse.json({ error: "Cupón inválido o inactivo." }, { status: 404 });
+
+  // Validar alcance del cupón si está restringido a checkouts específicos
+  const applicableIds = (coupon.applicable_checkout_ids as string[] | null) || [];
+  if (applicableIds.length > 0) {
+    if (!checkout?.id || !applicableIds.includes(checkout.id)) {
+      return NextResponse.json({ error: "Este cupón no es aplicable a este checkout." }, { status: 400 });
+    }
+  }
+
   const price = Number(checkout?.price_pyg ?? course.price_pyg ?? 0);
   const discount = Math.min(price, coupon.discount_type === "percentage" ? price * Number(coupon.discount_value) / 100 : Number(coupon.discount_value));
   return NextResponse.json({ coupon: { code: coupon.code, name: coupon.name }, discount, amountDue: price - discount });
