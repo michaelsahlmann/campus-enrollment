@@ -12,7 +12,7 @@ export async function GET() {
   if (!supabase) return NextResponse.json({ error: "Supabase no está configurado." }, { status: 503 });
   const { data, error } = await supabase
     .from("coupons")
-    .select("id, code, name, discount_type, discount_value, is_active, created_at")
+    .select("id, code, name, discount_type, discount_value, applicable_checkout_ids, is_active, created_at")
     .order("created_at", { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ coupons: data || [] });
@@ -27,12 +27,16 @@ export async function POST(request: NextRequest) {
       code?: string;
       discountType?: string;
       discountValue?: number;
+      applicableCheckoutIds?: string[] | null;
       length?: number;
     };
     const name = body.name?.trim();
     const value = Number(body.discountValue);
     const customCode = body.code?.trim().toUpperCase();
     const length = body.length === 4 ? 4 : body.length === 6 ? 6 : 6;
+    const applicableCheckoutIds = Array.isArray(body.applicableCheckoutIds) && body.applicableCheckoutIds.length > 0
+      ? body.applicableCheckoutIds
+      : null;
 
     if (!name || !Number.isFinite(value) || value <= 0 || !["percentage", "fixed"].includes(body.discountType || "")) {
       return NextResponse.json({ error: "Completá nombre, tipo de descuento y valor válidos." }, { status: 400 });
@@ -49,6 +53,7 @@ export async function POST(request: NextRequest) {
           name,
           discount_type: body.discountType,
           discount_value: value,
+          applicable_checkout_ids: applicableCheckoutIds,
           is_active: true,
         })
         .select()
@@ -71,6 +76,7 @@ export async function POST(request: NextRequest) {
           name,
           discount_type: body.discountType,
           discount_value: value,
+          applicable_checkout_ids: applicableCheckoutIds,
           is_active: true,
         })
         .select()

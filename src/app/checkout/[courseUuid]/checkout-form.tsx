@@ -1,6 +1,6 @@
 "use client";
 
-import React, { FormEvent, useState, useRef } from "react";
+import React, { FormEvent, useState, useRef, useEffect } from "react";
 import {
   CheckCircle2,
   Copy,
@@ -37,10 +37,12 @@ export default function CheckoutForm({
   course,
   checkoutSlug,
   bankSettings = DEFAULT_BANK_SETTINGS,
+  initialCoupon,
 }: {
   course: Course;
   checkoutSlug: string;
   bankSettings?: BankSettings;
+  initialCoupon?: string;
 }) {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -65,7 +67,9 @@ export default function CheckoutForm({
   const [mobileSummaryOpen, setMobileSummaryOpen] = useState(false);
 
   // Cupón de descuento
-  const [couponCode, setCouponCode] = useState("");
+  const [couponCode, setCouponCode] = useState(
+    initialCoupon ? initialCoupon.trim().toUpperCase() : ""
+  );
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState<string | null>(null);
   const [coupon, setCoupon] = useState<{
@@ -74,6 +78,41 @@ export default function CheckoutForm({
     discount: number;
     amountDue: number;
   } | null>(null);
+
+  // Auto-aplicar cupón si vino en URL (?coupon=... o ?c=...)
+  useEffect(() => {
+    if (initialCoupon && initialCoupon.trim()) {
+      const codeToApply = initialCoupon.trim().toUpperCase();
+      setCouponLoading(true);
+      setCouponError(null);
+      fetch(
+        `/api/checkout/coupons?code=${encodeURIComponent(
+          codeToApply
+        )}&course_uuid=${encodeURIComponent(
+          course.course_uuid
+        )}&checkout_slug=${encodeURIComponent(checkoutSlug)}`
+      )
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.coupon) {
+            setCoupon({
+              name: data.coupon.name,
+              code: data.coupon.code,
+              discount: Number(data.discount),
+              amountDue: Number(data.amountDue),
+            });
+          } else {
+            setCouponError(data?.error || "Cupón no válido para este curso o link.");
+          }
+        })
+        .catch((err) => {
+          setCouponError(err instanceof Error ? err.message : "Error al validar el cupón.");
+        })
+        .finally(() => {
+          setCouponLoading(false);
+        });
+    }
+  }, [initialCoupon, course.course_uuid, checkoutSlug]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 

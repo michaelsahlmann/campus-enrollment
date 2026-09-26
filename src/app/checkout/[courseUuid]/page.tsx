@@ -125,8 +125,19 @@ export async function generateMetadata(props: {
   };
 }
 
-export default async function CheckoutPage(props: { params: Promise<{ courseUuid: string }> }) {
+export default async function CheckoutPage(props: {
+  params: Promise<{ courseUuid: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const { courseUuid: checkoutSlug } = await props.params;
+  const searchParams = await props.searchParams;
+  const initialCoupon =
+    typeof searchParams.coupon === "string"
+      ? searchParams.coupon
+      : typeof searchParams.c === "string"
+      ? searchParams.c
+      : undefined;
+
   const [data, bankSettings] = await Promise.all([
     resolveCheckoutData(checkoutSlug),
     getBankSettings(),
@@ -145,6 +156,7 @@ export default async function CheckoutPage(props: { params: Promise<{ courseUuid
       }}
       checkoutSlug={data.slug}
       bankSettings={bankSettings}
+      initialCoupon={initialCoupon}
     />
   );
 }

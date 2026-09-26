@@ -5,7 +5,13 @@ export async function PUT(request: NextRequest, props: { params: Promise<{ check
   const { checkoutId } = await props.params;
   const supabase = getAdminSupabase();
   if (!supabase) return NextResponse.json({ error: "Supabase no está configurado." }, { status: 503 });
-  const body = (await request.json()) as { title?: string; pricePyg?: number; isActive?: boolean };
+  const body = (await request.json()) as {
+    title?: string;
+    pricePyg?: number;
+    isActive?: boolean;
+    trialDays?: number | null;
+    expiresAt?: string | null;
+  };
   const updateData: Record<string, unknown> = { updated_at: new Date().toISOString() };
   if (body.title !== undefined) {
     const title = body.title.trim();
@@ -20,6 +26,12 @@ export async function PUT(request: NextRequest, props: { params: Promise<{ check
   if (body.isActive !== undefined) {
     if (typeof body.isActive !== "boolean") return NextResponse.json({ error: "Estado inválido." }, { status: 400 });
     updateData.is_active = body.isActive;
+  }
+  if (body.trialDays !== undefined) {
+    updateData.trial_days = body.trialDays ? Number(body.trialDays) : null;
+  }
+  if (body.expiresAt !== undefined) {
+    updateData.expires_at = body.expiresAt ? new Date(body.expiresAt).toISOString() : null;
   }
   if (Object.keys(updateData).length === 1) return NextResponse.json({ error: "No hay cambios para guardar." }, { status: 400 });
   const { data, error } = await supabase

@@ -4,7 +4,7 @@ import { learnhouse } from "@/lib/learnhouse";
 
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "application/pdf"]);
 const MAX_PROOF_SIZE = 5 * 1024 * 1024;
-type Coupon = { id: string; code: string; discount_type: "percentage" | "fixed"; discount_value: number };
+type Coupon = { id: string; code: string; discount_type: "percentage" | "fixed"; discount_value: number; applicable_checkout_ids?: string[] | null };
 
 function value(formData: FormData, field: string) {
   const item = formData.get(field);
@@ -35,11 +35,12 @@ export async function POST(request: NextRequest) {
     let courseId: string | null = null;
     let resolvedCourseUuid = courseUuid;
     let originalAmount = 0;
+    let checkoutData: { trial_days?: number | null; expires_at?: string | null } | null = null;
 
     // 1. Buscar en checkout_links
     const { data: checkout } = await supabase
       .from("checkout_links")
-      .select("id, course_id, price_pyg, courses(id, course_uuid, price_pyg)")
+      .select("id, course_id, price_pyg, trial_days, expires_at, courses(id, course_uuid, price_pyg)")
       .eq("slug", checkoutSlug)
       .eq("is_active", true)
       .maybeSingle();
@@ -48,6 +49,7 @@ export async function POST(request: NextRequest) {
       checkoutId = checkout.id;
       courseId = checkout.course_id;
       originalAmount = Number(checkout.price_pyg || 0);
+      checkoutData = { trial_days: checkout.trial_days, expires_at: checkout.expires_at };
       const c = Array.isArray(checkout.courses) ? checkout.courses[0] : checkout.courses;
       if (c?.course_uuid) resolvedCourseUuid = c.course_uuid;
     } else {
@@ -75,12 +77,20 @@ export async function POST(request: NextRequest) {
     if (couponCode) {
       const { data } = await supabase
         .from("coupons")
-        .select("id, code, discount_type, discount_value")
+        .select("id, code, discount_type, discount_value, applicable_checkout_ids")
         .eq("code", couponCode)
         .eq("is_active", true)
         .maybeSingle();
       coupon = data as Coupon | null;
       if (!coupon) return NextResponse.json({ error: "El cupón no es válido o ya no está activo." }, { status: 400 });
+
+      // Validar si el cupón está restringido a checkouts específicos
+      const applicableIds = (coupon.applicable_checkout_ids as string[] | null) || [];
+      if (applicableIds.length > 0) {
+        if (!checkoutId || !applicableIds.includes(checkoutId)) {
+          return NextResponse.json({ error: "Este cupón no es válido para este checkout." }, { status: 400 });
+        }
+      }
     }
 
     const discountAmount = coupon
@@ -110,9 +120,22 @@ export async function POST(request: NextRequest) {
       if (uploadError) throw uploadError;
     }
 
-    // Cálculo de fecha de expiración si es trial (7, 15, 30 días)
-    const trialDays = trialDaysParam ? parseInt(trialDaysParam, 10) : 0;
-    const expiresAt = trialDays > 0 ? new Date(Date.now() + trialDays * 24 * 60 * 60 * 1000).toISOString() : null;
+    // Cálculo de fecha de expiración heredada del checkout o trial configurado
+    let calculatedExpiresAt: string | null = null;
+    let resolvedTrialDays: number | null = null;
+
+    if (checkoutData?.expires_at) {
+      calculatedExpiresAt = new Date(checkoutData.expires_at).toISOString();
+    } else if (checkoutData?.trial_days && checkoutData.trial_days > 0) {
+      resolvedTrialDays = checkoutData.trial_days;
+      calculatedExpiresAt = new Date(Date.now() + resolvedTrialDays * 24 * 60 * 60 * 1000).toISOString();
+    } else if (trialDaysParam) {
+      const parsedDays = parseInt(trialDaysParam, 10);
+      if (parsedDays > 0) {
+        resolvedTrialDays = parsedDays;
+        calculatedExpiresAt = new Date(Date.now() + parsedDays * 24 * 60 * 60 * 1000).toISOString();
+      }
+    }
 
     const reference = `CE-${crypto.randomUUID().replaceAll("-", "").slice(0, 8).toUpperCase()}`;
 
@@ -146,12 +169,14 @@ export async function POST(request: NextRequest) {
           {
             student_id: student?.id,
             course_id: courseId,
-            payment_status: "paid",
+            payment_status: "free",
             payment_method: "coupon_100",
             learnhouse_status: "enrolled",
             magic_link: enrollResult.magicLink,
-            expires_at: expiresAt,
-            notes: `Cupón 100% / Gratuito (${coupon?.code || "BECA"})${trialDays > 0 ? ` - Trial ${trialDays} días` : ""}`,
+            trial_days: resolvedTrialDays,
+            expires_at: calculatedExpiresAt,
+            is_revoked: false,
+            notes: `Cupón 100% / Gratuito (${coupon?.code || "BECA"})${calculatedExpiresAt ? ` - Vigencia hasta ${new Date(calculatedExpiresAt).toLocaleDateString("es-PY")}` : ""}`,
           },
           { onConflict: "student_id,course_id" }
         )

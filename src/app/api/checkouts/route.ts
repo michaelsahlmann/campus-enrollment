@@ -11,7 +11,7 @@ export async function GET() {
   if (!supabase) return NextResponse.json({ error: "Supabase no está configurado." }, { status: 503 });
   const { data, error } = await supabase
     .from("checkout_links")
-    .select("id, slug, title, price_pyg, is_active, created_at, courses(name, course_uuid)")
+    .select("id, slug, title, price_pyg, trial_days, expires_at, is_active, created_at, courses(name, course_uuid)")
     .order("created_at", { ascending: false });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ checkouts: data || [] });
@@ -21,7 +21,13 @@ export async function POST(request: NextRequest) {
   const supabase = getAdminSupabase();
   if (!supabase) return NextResponse.json({ error: "Supabase no está configurado." }, { status: 503 });
 
-  const body = (await request.json()) as { title?: string; courseId?: string; pricePyg?: number };
+  const body = (await request.json()) as {
+    title?: string;
+    courseId?: string;
+    pricePyg?: number;
+    trialDays?: number | null;
+    expiresAt?: string | null;
+  };
   if (!body.title?.trim() || !body.courseId || !Number.isFinite(Number(body.pricePyg)) || Number(body.pricePyg) < 0) {
     return NextResponse.json({ error: "Completá título, curso y precio válido." }, { status: 400 });
   }
@@ -74,6 +80,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "El curso seleccionado no se encontró en la base de datos." }, { status: 404 });
   }
 
+  const trialDays = body.trialDays ? Number(body.trialDays) : null;
+  const expiresAt = body.expiresAt ? new Date(body.expiresAt).toISOString() : null;
+
   for (let i = 0; i < 5; i += 1) {
     const { data, error } = await supabase
       .from("checkout_links")
@@ -82,9 +91,11 @@ export async function POST(request: NextRequest) {
         title: body.title.trim(),
         course_id: resolvedCourseDbId,
         price_pyg: Number(body.pricePyg),
+        trial_days: trialDays,
+        expires_at: expiresAt,
         is_active: true,
       })
-      .select("id, slug, title, price_pyg, is_active")
+      .select("id, slug, title, price_pyg, trial_days, expires_at, is_active")
       .single();
 
     if (!error) return NextResponse.json({ checkout: data }, { status: 201 });
