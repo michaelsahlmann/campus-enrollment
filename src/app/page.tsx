@@ -844,18 +844,18 @@ ${confirmedOrderCredentials.magicLink}
               type="button"
               onClick={() => switchTab(item.id)}
               aria-current={activeTab === item.id ? "page" : undefined}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition cursor-pointer ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition cursor-pointer text-left ${
                 activeTab === item.id
                   ? "bg-white/10 text-white border border-[#F26101]/40 shadow-sm"
                   : "text-zinc-400 hover:text-white hover:bg-white/5 border border-transparent"
               }`}
             >
-              <div className="flex items-center gap-2.5">
-                <item.icon className="w-4 h-4 text-[#F26101]" />
-                <span className="font-mono-system">{item.label}</span>
+              <div className="flex items-center gap-2.5 min-w-0">
+                <item.icon className="w-4 h-4 text-[#F26101] shrink-0" />
+                <span className="truncate whitespace-nowrap">{item.label}</span>
               </div>
               {item.badge !== undefined && item.badge > 0 && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono tabular-nums font-bold bg-[#F26101]/20 text-[#F26101] border border-[#F26101]/30">
+                <span className="ml-2 px-2 py-0.5 rounded-full text-[10px] font-mono tabular-nums font-bold bg-[#F26101]/20 text-[#F26101] border border-[#F26101]/30 shrink-0">
                   {item.badge}
                 </span>
               )}
@@ -909,18 +909,18 @@ ${confirmedOrderCredentials.magicLink}
               type="button"
               onClick={() => switchTab(item.id)}
               aria-current={activeTab === item.id ? "page" : undefined}
-              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition cursor-pointer ${
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition cursor-pointer text-left ${
                 activeTab === item.id
                   ? "bg-white/10 text-white border border-[#F26101]/40 shadow-sm"
                   : "text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.03] border border-transparent"
               }`}
             >
-              <div className="flex items-center gap-2.5">
-                <item.icon className={`w-4 h-4 ${activeTab === item.id ? "text-[#F26101]" : "text-zinc-400"}`} />
-                <span className="font-mono-system">{item.label}</span>
+              <div className="flex items-center gap-2.5 min-w-0">
+                <item.icon className={`w-4 h-4 shrink-0 ${activeTab === item.id ? "text-[#F26101]" : "text-zinc-400"}`} />
+                <span className="truncate whitespace-nowrap">{item.label}</span>
               </div>
               {item.badge !== undefined && item.badge > 0 && (
-                <span className="px-2 py-0.5 rounded-full text-[10px] font-mono tabular-nums font-bold bg-[#F26101]/20 text-[#F26101] border border-[#F26101]/30">
+                <span className="ml-2 px-2 py-0.5 rounded-full text-[10px] font-mono tabular-nums font-bold bg-[#F26101]/20 text-[#F26101] border border-[#F26101]/30 shrink-0">
                   {item.badge}
                 </span>
               )}
