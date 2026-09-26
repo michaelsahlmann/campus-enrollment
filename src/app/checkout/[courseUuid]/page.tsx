@@ -100,14 +100,14 @@ export async function generateMetadata(props: {
 
   if (!data) {
     return {
-      title: "Checkout de Matrícula | Campus Michael Sahlmann",
-      description: "Portal oficial de matriculación y pago de cursos.",
+      title: "Inscripción Oficial | Instituto Varkentis",
+      description: "Portal oficial de matriculación y pasarela del Campus Virtual Instituto Varkentis.",
     };
   }
 
   const formattedPrice = Number(data.price || 0).toLocaleString("es-PY");
-  const title = `${data.title} | Inscripción`;
-  const description = `Completa tu inscripción a ${data.title}. Inversión: ${formattedPrice} PYG. Acceso inmediato al Campus Virtual tras confirmación.`;
+  const title = `${data.title} | Instituto Varkentis`;
+  const description = `Inscripción oficial al programa ${data.title}. Inversión: ${formattedPrice} PYG. Acceso inmediato al Campus Virtual.`;
 
   return {
     title,
@@ -117,7 +117,7 @@ export async function generateMetadata(props: {
       description,
       type: "website",
       locale: "es_PY",
-      siteName: "Campus Michael Sahlmann",
+      siteName: "Instituto Varkentis",
     },
     alternates: {
       canonical: `/checkout/${data.slug}`,

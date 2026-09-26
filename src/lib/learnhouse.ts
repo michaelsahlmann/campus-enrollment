@@ -220,6 +220,31 @@ export class LearnHouseClient {
   }
 
   /**
+   * Desmatricula al usuario del curso y remueve sus accesos en LearnHouse.
+   */
+  async unenrollUser(
+    userId: number,
+    courseUuid: string
+  ): Promise<boolean> {
+    const url = `${this.baseUrl}/api/v1/admin/${this.orgSlug}/enrollments/${userId}/${courseUuid}`;
+    const res = await fetch(url, {
+      method: "DELETE",
+      headers: this.getHeaders(),
+    });
+
+    if (res.status === 404) {
+      return true; // Ya no estaba matriculado
+    }
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(`Error al desmatricular en LearnHouse (${res.status}): ${errorText}`);
+    }
+
+    return true;
+  }
+
+  /**
    * Genera un enlace de acceso directo (Magic Link) sin requerir contraseña.
    */
   async generateMagicLink(

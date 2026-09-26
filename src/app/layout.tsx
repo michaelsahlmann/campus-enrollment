@@ -1,24 +1,13 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: {
-    default: "Campus Michael Sahlmann | Matrículas & Checkouts",
-    template: "%s | Campus Michael Sahlmann",
+    default: "Instituto Varkentis | Portal de Matrícula & Checkouts",
+    template: "%s | Instituto Varkentis",
   },
   description:
-    "Portal oficial de matriculación, checkout y gestión de accesos para cursos y programas de formación en finanzas e inversiones.",
+    "Ecosistema para mentes que exigen resultados exponenciales. Portal oficial de matriculación, checkouts y gestión de accesos de Instituto Varkentis.",
   robots: {
     index: true,
     follow: true,
@@ -33,20 +22,17 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "es_PY",
-    siteName: "Campus Michael Sahlmann",
-    title: "Campus Michael Sahlmann | Matrículas & Checkouts",
+    siteName: "Instituto Varkentis",
+    title: "Instituto Varkentis | Portal de Matrícula & Checkouts",
     description:
-      "Portal oficial de matriculación y pasarela de pago para el Campus Virtual.",
+      "Portal oficial de matriculación y pasarela de pago para el Campus Virtual Instituto Varkentis.",
   },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html
-      lang="es"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="min-h-full flex flex-col bg-[#06080D] text-slate-100 selection:bg-emerald-500/30 selection:text-white">
+    <html lang="es" className="h-full antialiased">
+      <body className="min-h-full flex flex-col bg-[#050505] text-[#d6d6dc] selection:bg-[#F26101]/30 selection:text-white font-body">
         {children}
       </body>
     </html>
